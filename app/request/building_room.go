@@ -1,14 +1,17 @@
 package request
 
-type CreateBuilding struct {
-	Name string  `json:"name"`
+type CreateBuilding_Room struct {
+	RoomID string `form:"room_id" binding:"required"`
+	BuildingID string `form:"building_id" binding:"required"`
 }
 
-type UpdateBuilding struct{
-	CreateBuilding
+
+
+type UpdateBuilding_Room struct{
+	CreateBuilding_Room
 }
 
-type ListBuilding struct {
+type ListBuilding_Room struct {
 	Page     int    `form:"page"`
 	Size     int    `form:"size"`
 	SortBy   string `form:"sort_by"`
@@ -17,6 +20,6 @@ type ListBuilding struct {
 	SearchBy string `form:"search_by"`
 }
 
-type GetByIdBuilding struct{
+type GetByIdBuilding_Room struct{
 	ID string `uri:"id" binding:"required"`
 }

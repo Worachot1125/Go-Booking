@@ -118,6 +118,13 @@ import (
 // }
 
 func (s *Service) Create(ctx context.Context, req request.CreateUser) (*model.User, bool, error) {
+	// หา postion_id ตามชื่อ
+	position := &model.Position{}
+	err := s.db.NewSelect().Model(position).Where("name = ?", req.Position_Name).Scan(ctx)
+	if err != nil {
+		return nil, true, fmt.Errorf("position '%s' not found", req.Position_Name)
+	}
+
 	bytes, err := bcrypt.GenerateFromPassword([]byte(req.Password), 10)
 	if err != nil {
 		return nil, false, err
@@ -127,6 +134,8 @@ func (s *Service) Create(ctx context.Context, req request.CreateUser) (*model.Us
 		LastName:  req.LastName,
 		Email:     req.Email,
 		Password:  string(bytes),
+		Position_ID: position.ID,
+		Image_url:  req.Image_url,
 	}
 	_, err = s.db.NewInsert().Model(m).Exec(ctx)
 	if err != nil {
@@ -158,6 +167,8 @@ func (s *Service) Update(ctx context.Context, req request.UpdateUser, id request
 		LastName:  req.LastName,
 		Email:     req.Email,
 		Password:  string(bytes),
+		Position_ID: req.Position_ID,
+		Image_url:  req.Image_url,
 	}
 	m.SetUpdateNow()
 	_, err = s.db.NewUpdate().Model(m).
@@ -165,6 +176,8 @@ func (s *Service) Update(ctx context.Context, req request.UpdateUser, id request
 		Set("last_name = ?last_name").
 		Set("email = ?email").
 		Set("password = ?password").
+		Set("position_id = ?position_id").
+		Set("image_url = ?image_url").
 		Set("updated_at = ?updated_at").
 		WherePK().
 		OmitZero().
@@ -184,7 +197,7 @@ func (s *Service) List(ctx context.Context, req request.ListUser) ([]response.Li
 
 	query := s.db.NewSelect().
 		TableExpr("users as u").
-		Column("u.id", "u.first_name", "u.last_name", "u.email", "u.created_at", "u.updated_at").Where("deleted_at IS NULL")
+		Column("u.id", "u.first_name", "u.last_name", "u.email","u.position_id", "image_url", "u.created_at", "u.updated_at").Where("deleted_at IS NULL")
 
 	// Filtering
 	if req.Search != "" {
@@ -220,7 +233,7 @@ func (s *Service) Get(ctx context.Context, id request.GetByIdUser) (*response.Li
 
 	err := s.db.NewSelect().
 		TableExpr("users as u").
-		Column("u.id", "u.first_name", "u.last_name", "u.email", "u.created_at", "u.updated_at").
+		Column("u.id", "u.first_name", "u.last_name", "u.email","u.position_id", "image_url", "u.created_at", "u.updated_at").
 		Where("id = ?",id.ID).Where("deleted_at IS NULL").Scan(ctx, &m)	
 		return &m, err	
 }

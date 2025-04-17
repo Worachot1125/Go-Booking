@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=secret
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    ports:
+      - "5540:5540"
+
+  main:
+    build:
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    command: http
+    environment:
+      - DB_HOST=host.docker.internal
+      - DB_PORT=5432
+      - DB_DATABASE=postgres
+      - DB_USER=root
+      - DB_PASSWORD=secret
+      - DB_DSN=
+      - DB_SSLMODE=disable
+    depends_on:
+      postgres:
+        condition: service_healthy

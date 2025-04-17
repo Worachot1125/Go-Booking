@@ -12,5 +12,9 @@ func Room(router *gin.RouterGroup) {
 	room := router.Group("")
 	{
 		room.POST("/create", ctl.RoomCtl.Create)
+		room.PATCH("/:id",ctl.RoomCtl.Update)
+		room.GET("/list",ctl.RoomCtl.List)
+		room.GET("/:id",ctl.RoomCtl.Get)
+		room.DELETE("/:id",ctl.RoomCtl.Delete)
 	}
 }

@@ -172,7 +172,7 @@ func (s *Service) Update(ctx context.Context, req request.UpdateUser, id request
 		Exec(ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {
-			return nil, true, errors.New("product already exists")
+			return nil, true, errors.New("user already exists")
 		}
 	}
 	return m, false, err

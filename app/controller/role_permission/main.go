@@ -1,4 +1,4 @@
-package role
+package role_permission
 
 import "github.com/uptrace/bun"
 
@@ -9,7 +9,7 @@ type Controller struct {
 
 func NewController(db *bun.DB) *Controller {
 	return &Controller{
-		Name:    `role-ctl`,
+		Name:    `role_permission-ctl`,
 		Service: NewService(db),
 	}
 }

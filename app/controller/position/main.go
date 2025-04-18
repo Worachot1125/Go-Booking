@@ -9,7 +9,7 @@ type Controller struct {
 
 func NewController(db *bun.DB) *Controller {
 	return &Controller{
-		Name:    `product-ctl`,
+		Name:    `position-ctl`,
 		Service: NewService(db),
 	}
 }

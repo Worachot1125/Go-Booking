@@ -4,9 +4,7 @@ import "app/app/model"
 
 func Models() []any {
 	return []any{
-		(*model.Role)(nil),
-		(*model.User)(nil),
-		(*model.Position)(nil),
+		(*model.Permission)(nil),
 	}
 }
 

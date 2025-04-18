@@ -5,7 +5,7 @@ import (
 )
 
 type Permission struct {
-	bun.BaseModel `bun:"table:permissions"`
+	bun.BaseModel `bun:"table:permissions,alias:p"`
 
 	ID          string `bun:",pk,type:uuid,default:gen_random_uuid()"`
 	Name        string `bun:"name,unique,notnull"`

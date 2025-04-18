@@ -6,7 +6,7 @@ type PermissionCreate struct {
 }
 
 type PermissionUpdate struct {
-	PositionCreate
+	PermissionCreate
 }
 
 type PermissionGetByID struct {

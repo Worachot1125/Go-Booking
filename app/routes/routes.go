@@ -41,6 +41,5 @@ func Router(app *gin.Engine) {
 	Product(apiV1.Group("/products"))
 	User(apiV1.Group("/users"))
 	Room(apiV1.Group("/rooms"))
-	Position(apiV1.Group("/positions"))
 
 }

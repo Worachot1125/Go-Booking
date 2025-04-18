@@ -231,3 +231,4 @@ func (s *Service) Delete(ctx context.Context, id request.GetByIdRoom) error {
 // func (s *Service) Get(ctx context.Context, id request.GetByIdRoom) error {
 
 // }
+

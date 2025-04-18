@@ -5,10 +5,10 @@ import (
 )
 
 type Role struct {
-	bun.BaseModel `bun:"table:users"`
+	bun.BaseModel `bun:"table:roles"`
 
 	ID   string `bun:",pk,type:uuid,default:gen_random_uuid()"`
-	Name string `bun:"name,notnull"`
+	Name string `bun:"name,unique,notnull"`
 
 	CreateUpdateUnixTimestamp
 	SoftDelete

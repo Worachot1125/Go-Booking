@@ -17,7 +17,7 @@ func (s *Service) Create(ctx context.Context, req request.PositionCreate) (*mode
 	_, err := s.db.NewInsert().Model(&m).Exec(ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {
-			return nil, true, errors.New("product already exists")
+			return nil, true, errors.New("position already exists")
 		}
 	}
 	return &m, false, err

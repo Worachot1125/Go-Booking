@@ -140,7 +140,7 @@ func (s *Service) Create(ctx context.Context, req request.CreateUser) (*model.Us
 	_, err = s.db.NewInsert().Model(m).Exec(ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {
-			return nil, true, errors.New("product already exists")
+			return nil, true, errors.New("users already exists")
 		}
 	}
 

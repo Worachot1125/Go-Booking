@@ -24,6 +24,7 @@ func (s *Service) Create(ctx context.Context, req request.CreateBuilding_Room) (
 		RoomID: req.RoomID,
 		BuildingID: req.BuildingID,
 	}
+	m.SetCreatedNow()
 
 	_, err = s.db.NewInsert().Model(m).Exec(ctx)
 	if err != nil {

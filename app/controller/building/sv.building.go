@@ -14,6 +14,7 @@ func (s *Service) Create(ctx context.Context, req request.CreateBuilding) (*mode
 	m := model.Building{
 		Name: req.Name,
 	}
+	m.SetCreatedNow()
 	_, err := s.db.NewInsert().Model(&m).Exec(ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {
@@ -61,7 +62,7 @@ func (s *Service) List(ctx context.Context, req request.ListBuilding) ([]respons
 
 	query := s.db.NewSelect().
 		TableExpr("buildings as b").
-		Column("b.id", "b.name", "b.updated_at").Where("deleted_at IS NULL")
+		Column("b.id", "b.name", "b.created_at", "b.updated_at").Where("deleted_at IS NULL")
 
 	// Filtering
 	if req.Search != "" {

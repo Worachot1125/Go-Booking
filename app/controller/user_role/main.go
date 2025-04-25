@@ -1,4 +1,4 @@
-package building
+package user_role
 
 import "github.com/uptrace/bun"
 
@@ -9,7 +9,7 @@ type Controller struct {
 
 func NewController(db *bun.DB) *Controller {
 	return &Controller{
-		Name:    `building-ctl`,
+		Name:    `user_role-ctl`,
 		Service: NewService(db),
 	}
 }

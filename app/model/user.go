@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/uptrace/bun"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
@@ -18,4 +19,9 @@ type User struct {
 	Position *Position `bun:"rel:belongs-to,join:position_id=id"`
 	CreateUpdateUnixTimestamp
 	SoftDelete
+}
+
+func (u *User) CheckPassword(password string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
+	return err == nil
 }

@@ -122,6 +122,7 @@ func (s *Service) Create(ctx context.Context, req request.CreateRoom) (*model.Ro
 		Capacity:    req.Capacity,
 		Image_url:   req.Image_url,
 	}
+	m.SetCreatedNow()
 	_, err := s.db.NewInsert().Model(&m).Exec(ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {

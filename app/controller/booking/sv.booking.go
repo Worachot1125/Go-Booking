@@ -31,6 +31,7 @@ func (s *Service) Create(ctx context.Context, req request.CreateBooking) (*model
 		EndTime: parseTime(req.EndTime),
 		Status: enum.BookingStatus("pending"),
 	}
+	m.SetCreatedNow()
 	
 	_, err := s.db.NewInsert().Model(&m).Exec(ctx)
 	if err != nil {

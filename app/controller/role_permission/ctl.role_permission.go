@@ -28,3 +28,32 @@ func (ctl *Controller) Create(ctx *gin.Context) {
 
 	response.Success(ctx, data)
 }
+
+func (ctl *Controller) Update(ctx *gin.Context) {
+	id := request.Role_PermissionGetByID{}
+	if err := ctx.BindUri(&id); err != nil {
+		logger.Err(err.Error())
+		response.BadRequest(ctx, err.Error())
+		return
+	}
+
+	req := request.Role_PermissionUpdate{}
+	if err := ctx.Bind(&req); err != nil {
+		logger.Err(err.Error())
+		response.BadRequest(ctx, err.Error())
+		return
+	}
+
+	data, mserr, err := ctl.Service.Update(ctx, id.ID, req)
+	if err != nil {
+		ms := "Internal Server Error"
+		if mserr {
+			ms = err.Error()
+		}
+		logger.Err(err.Error())
+		response.InternalError(ctx, ms)
+		return
+	}
+
+	response.Success(ctx, data)
+}

@@ -114,11 +114,10 @@ import (
 // 	order := fmt.Sprintf("%s %s", req.SortBy, req.OrderBy)
 // 	err = query.Offset(offset).Limit(limit).Order(order).Scan(ctx, &m)
 
-// 	return m, count, err
-// }
+//		return m, count, err
+//	}
 
 func (s *Service) Create(ctx context.Context, req request.CreateUser) (*model.User, bool, error) {
-	// หา postion_id ตามชื่อ
 	position := &model.Position{}
 	err := s.db.NewSelect().Model(position).Where("name = ?", req.Position_Name).Scan(ctx)
 	if err != nil {
@@ -129,22 +128,58 @@ func (s *Service) Create(ctx context.Context, req request.CreateUser) (*model.Us
 	if err != nil {
 		return nil, false, err
 	}
-	m := &model.User{
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Email:     req.Email,
-		Password:  string(bytes),
+
+	user := &model.User{
+		FirstName:   req.FirstName,
+		LastName:    req.LastName,
+		Email:       req.Email,
+		Password:    string(bytes),
 		Position_ID: position.ID,
-		Image_url:  req.Image_url,
+		Image_url:   req.Image_url,
 	}
-	_, err = s.db.NewInsert().Model(m).Exec(ctx)
+	user.SetCreatedNow()
+
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		if strings.Contains(err.Error(), "duplicate key value") {
-			return nil, true, errors.New("users already exists")
-		}
+		return nil, false, err
 	}
 
-	return m, false, err
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	_, err = tx.NewInsert().Model(user).Exec(ctx)
+	if err != nil {
+		if strings.Contains(err.Error(), "duplicate key value") {
+			return nil, true, errors.New("user already exists")
+		}
+		return nil, false, err
+	}
+
+	role := &model.Role{}
+	err = tx.NewSelect().Model(role).Where("name = ?", "Employee").Scan(ctx)
+	if err != nil {
+		return nil, false, errors.New("role 'Employee' not found")
+	}
+
+	userRole := &model.User_Role{
+		User_ID: user.ID,
+		Role_ID: role.ID,
+	}
+	_, err = tx.NewInsert().Model(userRole).Exec(ctx)
+	if err != nil {
+		return nil, false, err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, false, err
+	}
+	err = nil
+
+	return user, false, nil
 }
 
 func (s *Service) Update(ctx context.Context, req request.UpdateUser, id request.GetByIdUser) (*model.User, bool, error) {
@@ -160,15 +195,14 @@ func (s *Service) Update(ctx context.Context, req request.UpdateUser, id request
 	if err != nil {
 		return nil, false, err
 	}
-	
 	m := &model.User{
-		ID: id.ID,
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Email:     req.Email,
-		Password:  string(bytes),
+		ID:          id.ID,
+		FirstName:   req.FirstName,
+		LastName:    req.LastName,
+		Email:       req.Email,
+		Password:    string(bytes),
 		Position_ID: req.Position_ID,
-		Image_url:  req.Image_url,
+		Image_url:   req.Image_url,
 	}
 	m.SetUpdateNow()
 	_, err = s.db.NewUpdate().Model(m).
@@ -197,7 +231,7 @@ func (s *Service) List(ctx context.Context, req request.ListUser) ([]response.Li
 
 	query := s.db.NewSelect().
 		TableExpr("users as u").
-		Column("u.id", "u.first_name", "u.last_name", "u.email","u.position_id", "image_url", "u.created_at", "u.updated_at").Where("deleted_at IS NULL")
+		Column("u.id", "u.first_name", "u.last_name", "u.email", "u.position_id", "image_url", "u.created_at", "u.updated_at").Where("deleted_at IS NULL")
 
 	// Filtering
 	if req.Search != "" {
@@ -233,21 +267,20 @@ func (s *Service) Get(ctx context.Context, id request.GetByIdUser) (*response.Li
 
 	err := s.db.NewSelect().
 		TableExpr("users as u").
-		Column("u.id", "u.first_name", "u.last_name", "u.email","u.position_id", "image_url", "u.created_at", "u.updated_at").
-		Where("id = ?",id.ID).Where("deleted_at IS NULL").Scan(ctx, &m)	
-		return &m, err	
+		Column("u.id", "u.first_name", "u.last_name", "u.email", "u.position_id", "image_url", "u.created_at", "u.updated_at").
+		Where("id = ?", id.ID).Where("deleted_at IS NULL").Scan(ctx, &m)
+	return &m, err
 }
 
 func (s *Service) Delete(ctx context.Context, id request.GetByIdUser) error {
 	ex, err := s.db.NewSelect().Table("users").Where("id = ?", id.ID).Where("deleted_at IS NULL").Exists(ctx)
 	if err != nil {
-		return  err
+		return err
 	}
 	if !ex {
 		return errors.New("user not found")
 	}
 
-	_, err = s.db.NewDelete().Model((*model.User)(nil)).Where("id = ?",id.ID).Exec(ctx)
+	_, err = s.db.NewDelete().Model((*model.User)(nil)).Where("id = ?", id.ID).Exec(ctx)
 	return err
 }
-

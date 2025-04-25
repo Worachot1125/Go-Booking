@@ -118,6 +118,7 @@ func (s *Service) Create(ctx context.Context, req request.PermissionCreate) (*mo
 		Name:        req.Name,
 		Description: req.Description,
 	}
+	rol.SetCreatedNow()
 	_, err := s.db.NewInsert().Model(&rol).Exec(ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {

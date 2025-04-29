@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"app/app/controller/booking"
 	"app/app/controller/building"
 	"app/app/controller/building_room"
 	"app/app/controller/login"
@@ -24,7 +25,8 @@ type Controller struct {
 	Role_Permissionctl *role_permission.Controller // Assuming RoomCtl is also a product controller for this example
 	BuildingCtl        *building.Controller
 	Building_RoomCtl   *building_room.Controller
-	LoginCtl           *login.Controller// Assuming RoomCtl is also a product controller for this example
+	BookingCtl         *booking.Controller
+	LoginCtl           *login.Controller // Assuming RoomCtl is also a product controller for this example
 
 	// Other controllers...
 }
@@ -42,7 +44,8 @@ func New() *Controller {
 		Role_Permissionctl: role_permission.NewController(db),
 		BuildingCtl:        building.NewController(db),
 		Building_RoomCtl:   building_room.NewController(db),
-		LoginCtl:           login.NewController(db), // Assuming RoomCtl is also a product controller for this example
+		LoginCtl:           login.NewController(db),
+		BookingCtl:         booking.NewController(db), // Assuming RoomCtl is also a product controller for this example
 
 		// Other controllers...
 	}

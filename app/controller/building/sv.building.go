@@ -14,7 +14,6 @@ func (s *Service) Create(ctx context.Context, req request.CreateBuilding) (*mode
 	m := model.Building{
 		Name: req.Name,
 	}
-	m.SetCreatedNow()
 	_, err := s.db.NewInsert().Model(&m).Exec(ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {
@@ -62,14 +61,16 @@ func (s *Service) List(ctx context.Context, req request.ListBuilding) ([]respons
 
 	query := s.db.NewSelect().
 		TableExpr("buildings as b").
-		Column("b.id", "b.name", "b.created_at", "b.updated_at").Where("deleted_at IS NULL")
+		Column("b.id", "b.name", "b.created_at", "b.updated_at").
+		Where("deleted_at IS NULL").
+		OrderExpr("b.name ASC")
 
 	// Filtering
 	if req.Search != "" {
 		search := "%" + strings.ToLower(req.Search) + "%"
 		if req.SearchBy != "" {
 			searchBy := strings.ToLower(req.SearchBy)
-			query = query.Where(fmt.Sprintf("LOWER(r.%s) LIKE ?", searchBy), search)
+			query = query.Where(fmt.Sprintf("LOWER(b.%s) LIKE ?", searchBy), search)
 		} else {
 			query = query.Where("LOWER(b.name) LIKE ?", search)
 		}

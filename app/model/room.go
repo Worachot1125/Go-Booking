@@ -16,4 +16,3 @@ type Room struct {
 	CreateUpdateUnixTimestamp
 	SoftDelete
 }
-

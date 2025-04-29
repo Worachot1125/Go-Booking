@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -116,21 +117,32 @@ import (
 // }
 
 func (s *Service) Create(ctx context.Context, req request.CreateRoom) (*model.Room, bool, error) {
+	// ตรวจสอบข้อมูลห้องก่อนที่จะบันทึก
+	if req.Name == "" || req.Description == "" || req.Capacity == 0 || req.Image_url == "" {
+		return nil, false, errors.New("ข้อมูลห้องไม่ครบถ้วน")
+	}
+
+	// สร้างโมเดลห้องใหม่
 	m := model.Room{
 		Name:        req.Name,
 		Description: req.Description,
 		Capacity:    req.Capacity,
-		Image_url:   req.Image_url,
+		Image_url:   req.Image_url, // ค่านี้ควรจะได้จาก Cloudinary
 	}
-	m.SetCreatedNow()
+
+	// ทำการบันทึกข้อมูลห้องลงในฐานข้อมูล
 	_, err := s.db.NewInsert().Model(&m).Exec(ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {
 			return nil, true, errors.New("room already exists")
 		}
+		return nil, false, err
 	}
-	return &m, false, err
+
+	return &m, false, nil
 }
+
+
 func (s *Service) Update(ctx context.Context, req request.UpdateRoom, id request.GetByIdRoom) (*model.Room, bool, error) {
 	ex, err := s.db.NewSelect().Table("rooms").Where("id = ?", id.ID).Exists(ctx)
 	if err != nil {
@@ -175,18 +187,26 @@ func (s *Service) List(ctx context.Context, req request.ListRoom) ([]response.Ro
 
 	query := s.db.NewSelect().
 		TableExpr("rooms as r").
-		Column("r.id", "r.name", "r.description", "r.capacity", "r.updated_at").Where("deleted_at IS NULL")
+		Column("r.id", "r.name", "r.description", "r.capacity", "r.image_url", "r.created_at", "r.updated_at").Where("deleted_at IS NULL").OrderExpr("r.name ASC")
 
-	// Filtering
-	if req.Search != "" {
-		search := "%" + strings.ToLower(req.Search) + "%"
-		if req.SearchBy != "" {
+		if req.Search != "" {
 			searchBy := strings.ToLower(req.SearchBy)
-			query = query.Where(fmt.Sprintf("LOWER(r.%s) LIKE ?", searchBy), search)
-		} else {
-			query = query.Where("LOWER(r.name) LIKE ?", search)
+			search := req.Search
+		
+			switch searchBy {
+			case "name", "description":
+				query = query.Where(fmt.Sprintf("LOWER(r.%s) LIKE ?", searchBy), "%"+strings.ToLower(search)+"%")
+			case "capacity":
+				// แปลง string -> int
+				if capValue, err := strconv.Atoi(search); err == nil {
+					query = query.Where("r.capacity = ?", capValue)
+				}
+			default:
+				// fallback ถ้าไม่กำหนดหรือไม่รองรับ
+				query = query.Where("LOWER(r.name) LIKE ?", "%"+strings.ToLower(search)+"%")
+			}
 		}
-	}
+		
 
 	// Count total before pagination
 	count, err := query.Count(ctx)
@@ -228,8 +248,3 @@ func (s *Service) Delete(ctx context.Context, id request.GetByIdRoom) error {
 	_, err = s.db.NewDelete().Model((*model.Room)(nil)).Where("id = ?", id.ID).Exec(ctx)
 	return err
 }
-
-// func (s *Service) Get(ctx context.Context, id request.GetByIdRoom) error {
-
-// }
-

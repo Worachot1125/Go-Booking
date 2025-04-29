@@ -46,6 +46,9 @@ func Router(app *gin.Engine) {
 	Permission(apiV1.Group("/permissions"))
 	Role_Permission(apiV1.Group("/role_permissions"))
 	Building(apiV1.Group("/buildings"))
+	Building_Room(apiV1.Group("/buildingRooms"))
 	Login(apiV1.Group("/login"))
+	Booking(apiV1.Group("/bookings"))
+
 
 }

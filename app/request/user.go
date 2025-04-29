@@ -1,13 +1,14 @@
 package request
 
 type CreateUser struct {
-	FirstName   string `json:"first_name"`
-	LastName    string `json:"last_name"`
-	Email       string `json:"email"`
-	Password    string `json:"password"`
-	Position_ID string `json:"position_id"`
+	FirstName     string `json:"first_name"`
+	LastName      string `json:"last_name"`
+	Email         string `json:"email"`
+	Password      string `json:"password"`
+	Position_ID   string `json:"position_id"`
 	Position_Name string `json:"position_name"`
-	Image_url   string `json:"image_url"`
+	Image_url     string `json:"image_url"`
+	Phone         string `json:"phone"`
 }
 
 type UpdateUser struct {

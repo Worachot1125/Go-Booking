@@ -17,6 +17,7 @@ type Booking struct {
 	RoomID      string             `bun:"room_id,notnull"`
 	Title       string             `bun:"title,notnull"`
 	Description string             `bun:"description,notnull"`
+	Phone       string             `bun:"phone,notnull"`
 	StartTime   time.Time          `bun:"start_time,notnull"`
 	EndTime     time.Time          `bun:"end_time,notnull"`
 	Status      enum.BookingStatus `bun:"status,notnull"`

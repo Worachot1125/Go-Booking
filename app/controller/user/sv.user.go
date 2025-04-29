@@ -136,6 +136,7 @@ func (s *Service) Create(ctx context.Context, req request.CreateUser) (*model.Us
 		Password:    string(bytes),
 		Position_ID: position.ID,
 		Image_url:   req.Image_url,
+		Phone:       req.Phone,
 	}
 	user.SetCreatedNow()
 
@@ -203,6 +204,7 @@ func (s *Service) Update(ctx context.Context, req request.UpdateUser, id request
 		Password:    string(bytes),
 		Position_ID: req.Position_ID,
 		Image_url:   req.Image_url,
+		Phone:       req.Phone,
 	}
 	m.SetUpdateNow()
 	_, err = s.db.NewUpdate().Model(m).
@@ -212,6 +214,7 @@ func (s *Service) Update(ctx context.Context, req request.UpdateUser, id request
 		Set("password = ?password").
 		Set("position_id = ?position_id").
 		Set("image_url = ?image_url").
+		Set("phone = ?phone").
 		Set("updated_at = ?updated_at").
 		WherePK().
 		OmitZero().
@@ -231,7 +234,7 @@ func (s *Service) List(ctx context.Context, req request.ListUser) ([]response.Li
 
 	query := s.db.NewSelect().
 		TableExpr("users as u").
-		Column("u.id", "u.first_name", "u.last_name", "u.email", "u.position_id", "image_url", "u.created_at", "u.updated_at").Where("deleted_at IS NULL")
+		Column("u.id", "u.first_name", "u.last_name", "u.email", "u.position_id", "u.image_url", "u.phone", "u.created_at", "u.updated_at").Where("deleted_at IS NULL")
 
 	// Filtering
 	if req.Search != "" {
@@ -267,7 +270,7 @@ func (s *Service) Get(ctx context.Context, id request.GetByIdUser) (*response.Li
 
 	err := s.db.NewSelect().
 		TableExpr("users as u").
-		Column("u.id", "u.first_name", "u.last_name", "u.email", "u.position_id", "image_url", "u.created_at", "u.updated_at").
+		Column("u.id", "u.first_name", "u.last_name", "u.email", "u.position_id", "u.image_url", "u.phone", "u.created_at", "u.updated_at").
 		Where("id = ?", id.ID).Where("deleted_at IS NULL").Scan(ctx, &m)
 	return &m, err
 }

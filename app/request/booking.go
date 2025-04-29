@@ -5,6 +5,7 @@ type CreateBooking struct {
 	RoomID      string `json:"room_id"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	Phone       string `json:"phone"`
 	StartTime   string `json:"start_time"`
 	EndTime     string `json:"end_time"`
 	Status      string `json:"status"`
@@ -29,7 +30,7 @@ type GetByIdBooking struct {
 }
 
 type GetByRoomIdBooking struct {
-	ID string `uri:"id" binding:"required"`
+	ID       string `uri:"id" binding:"required"`
 	Page     int    `form:"page"`
 	Size     int    `form:"size"`
 	SortBy   string `form:"sort_by"`

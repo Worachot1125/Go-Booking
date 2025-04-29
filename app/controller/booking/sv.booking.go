@@ -45,6 +45,7 @@ func (s *Service) Create(ctx context.Context, req request.CreateBooking) (*model
 		RoomID:      req.RoomID,
 		Title:       req.Title,
 		Description: req.Description,
+		Phone:       req.Phone,
 		StartTime:   startTime,
 		EndTime:     endTime,
 		Status:      enum.BookingStatus("Pending"),
@@ -57,7 +58,6 @@ func (s *Service) Create(ctx context.Context, req request.CreateBooking) (*model
 
 	return &m, false, nil
 }
-
 
 func (s *Service) Update(ctx context.Context, req request.UpdateBooking, id request.GetByIdBooking) (*model.Booking, bool, error) {
 	ex, err := s.db.NewSelect().Table("bookings").Where("id = ?", id.ID).Exists(ctx)
@@ -74,6 +74,7 @@ func (s *Service) Update(ctx context.Context, req request.UpdateBooking, id requ
 		RoomID:      req.RoomID,
 		Title:       req.Title,
 		Description: req.Description,
+		Phone:       req.Phone,
 		StartTime:   parseTime(req.StartTime),
 		EndTime:     parseTime(req.EndTime),
 		Status:      enum.BookingStatus(req.Status),
@@ -84,6 +85,7 @@ func (s *Service) Update(ctx context.Context, req request.UpdateBooking, id requ
 	_, err = s.db.NewUpdate().Model(m).
 		Set("room_id = ?room_id").
 		Set("description = ?description").
+		Set("phone = ?phone").
 		Set("start_time = ?start_time").
 		Set("end_time = ?end_time").
 		Set("status = ?status").
@@ -116,6 +118,7 @@ func (s *Service) List(ctx context.Context, req request.ListBooking) ([]response
 		ColumnExpr("r.name as room_name").
 		ColumnExpr("b.title as title").
 		ColumnExpr("b.description as description").
+		ColumnExpr("b.phone as phone").
 		ColumnExpr("b.start_time as start_time").
 		ColumnExpr("b.end_time as end_time").
 		ColumnExpr("b.status as status").
@@ -186,6 +189,7 @@ func (s *Service) Get(ctx context.Context, id request.GetByIdBooking) (*response
 		ColumnExpr("r.name as room_name").
 		ColumnExpr("b.title as title").
 		ColumnExpr("b.description as description").
+		ColumnExpr("b.phone as phone").
 		ColumnExpr("b.start_time as start_time").
 		ColumnExpr("b.end_time as end_time").
 		ColumnExpr("b.status as status").
@@ -199,44 +203,44 @@ func (s *Service) Get(ctx context.Context, id request.GetByIdBooking) (*response
 }
 
 func (s *Service) GetByRoomId(ctx context.Context, req request.GetByRoomIdBooking) ([]response.BookingResponse, int, error) {
-    // เพิ่มการรับค่า Page และ Size จาก req
-    offset := (req.Page - 1) * req.Size
-    m := []response.BookingResponse{}
+	// เพิ่มการรับค่า Page และ Size จาก req
+	offset := (req.Page - 1) * req.Size
+	m := []response.BookingResponse{}
 
-    query := s.db.NewSelect().
-        TableExpr("bookings as b").
-        ColumnExpr("b.id as id").
-        ColumnExpr("u.id as user_id").
-        ColumnExpr("u.first_name as user_name").
-        ColumnExpr("u.last_name as user_lastname").
-        ColumnExpr("r.id as room_id").
-        ColumnExpr("r.name as room_name").
-        ColumnExpr("b.title as title").
-        ColumnExpr("b.description as description").
-        ColumnExpr("b.start_time as start_time").
-        ColumnExpr("b.end_time as end_time").
-        ColumnExpr("b.status as status").
-        ColumnExpr("b.created_at as created_at").
-        ColumnExpr("b.updated_at as updated_at").
-        Join("JOIN users as u ON b.user_id::uuid = u.id").
-        Join("JOIN rooms as r ON b.room_id::uuid = r.id").
-        Where("b.deleted_at IS NULL").
-        Where("r.id = ?", req.RoomID). // ตรวจสอบว่า RoomID ถูกต้องและเป็น UUID
-        OrderExpr("start_time ASC")
+	query := s.db.NewSelect().
+		TableExpr("bookings as b").
+		ColumnExpr("b.id as id").
+		ColumnExpr("u.id as user_id").
+		ColumnExpr("u.first_name as user_name").
+		ColumnExpr("u.last_name as user_lastname").
+		ColumnExpr("r.id as room_id").
+		ColumnExpr("r.name as room_name").
+		ColumnExpr("b.title as title").
+		ColumnExpr("b.description as description").
+		ColumnExpr("b.phone as phone").
+		ColumnExpr("b.start_time as start_time").
+		ColumnExpr("b.end_time as end_time").
+		ColumnExpr("b.status as status").
+		ColumnExpr("b.created_at as created_at").
+		ColumnExpr("b.updated_at as updated_at").
+		Join("JOIN users as u ON b.user_id::uuid = u.id").
+		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
+		Where("b.deleted_at IS NULL").
+		Where("r.id = ?", req.RoomID). // ตรวจสอบว่า RoomID ถูกต้องและเป็น UUID
+		OrderExpr("start_time ASC")
 
-    count, err := query.Count(ctx)
-    if err != nil {
-        return nil, 0, err
-    }
+	count, err := query.Count(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
 
-    err = query.OrderExpr("start_time ASC").Limit(req.Size).Offset(offset).Scan(ctx, &m)
-    if err != nil {
-        return nil, 0, err
-    }
+	err = query.OrderExpr("start_time ASC").Limit(req.Size).Offset(offset).Scan(ctx, &m)
+	if err != nil {
+		return nil, 0, err
+	}
 
-    return m, count, nil
+	return m, count, nil
 }
-
 
 func (s *Service) Delete(ctx context.Context, id request.GetByIdBooking) error {
 	ex, err := s.db.NewSelect().Table("bookings").Where("id = ?", id.ID).Where("deleted_at IS NULL").Exists(ctx)

@@ -1,5 +1,5 @@
 package response
 
 type FindByEmail struct {
-	Email string `bun:"email"`
+	Email string `bun:"email" json:"email"`
 }

@@ -4,7 +4,13 @@ import (
 	"app/app/request"
 	"app/app/response"
 	"app/internal/logger"
+	"context"
+	"fmt"
+	"os"
+	"time"
 
+	"github.com/cloudinary/cloudinary-go"
+	"github.com/cloudinary/cloudinary-go/api/uploader"
 	"github.com/gin-gonic/gin"
 )
 
@@ -132,28 +138,86 @@ import (
 //		response.SuccessWithPaginate(ctx, data, req.Size, req.Page, count)
 //	}
 func (ctl *Controller) Create(ctx *gin.Context) {
-	body := request.CreateUser{}
+	firstName := ctx.PostForm("first_name")
+	lastName := ctx.PostForm("last_name")
+	email := ctx.PostForm("email")
+	password := ctx.PostForm("password")
+	phone := ctx.PostForm("phone")
+	positionName := ctx.PostForm("position_name")
 
-	if err := ctx.Bind(&body); err != nil {
-		response.BadRequest(ctx, err.Error())
+	if firstName == "" || lastName == "" || email == "" || password == "" || phone == "" || positionName == "" {
+		response.BadRequest(ctx, "ข้อมูลผู้ใช้ไม่ครบ")
 		return
 	}
 
-	_, mserr, err := ctl.Service.Create(ctx, body)
+	// รับไฟล์รูปภาพ
+	file, err := ctx.FormFile("image_url")
 	if err != nil {
-		ms := "internal server error"
+		logger.Errf("No file uploaded: %v", err)
+		response.BadRequest(ctx, "กรุณาเลือกไฟล์รูปภาพ")
+		return
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		logger.Errf("Cannot open uploaded file: %v", err)
+		response.InternalError(ctx, "ไม่สามารถเปิดไฟล์ได้")
+		return
+	}
+	defer src.Close()
+
+	cld, err := cloudinary.NewFromParams(
+		os.Getenv("CLOUDINARY_CLOUD_NAME"),
+		os.Getenv("CLOUDINARY_API_KEY"),
+		os.Getenv("CLOUDINARY_API_SECRET"),
+	)
+	if err != nil {
+		logger.Errf("Cloudinary config error: %v", err)
+		response.InternalError(ctx, "การตั้งค่า Cloudinary ไม่ถูกต้อง")
+		return
+	}
+
+	uploadCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	uploadResult, err := cld.Upload.Upload(uploadCtx, src, uploader.UploadParams{
+		Folder:   "user",
+		PublicID: fmt.Sprintf("user_%d", time.Now().UnixNano()),
+	})
+	if err != nil {
+		logger.Errf("Upload to Cloudinary failed: %v", err)
+		response.InternalError(ctx, "ไม่สามารถอัปโหลดรูปภาพได้")
+		return
+	}
+
+	// เตรียม request
+	req := request.CreateUser{
+		FirstName:     firstName,
+		LastName:      lastName,
+		Email:         email,
+		Password:      password,
+		Phone:         phone,
+		Position_Name: positionName,
+		Image_url:     uploadResult.SecureURL,
+	}
+
+	// เรียก Service
+	data, mserr, err := ctl.Service.Create(ctx, req)
+	if err != nil {
+		ms := "Internal Server Error"
 		if mserr {
 			ms = err.Error()
 		}
-		logger.Errf(err.Error())
+		logger.Err(err.Error())
 		response.InternalError(ctx, ms)
 		return
 	}
 
-	response.Success(ctx, nil)
+	response.Success(ctx, data)
 }
 
 func (ctl *Controller) Update(ctx *gin.Context) {
+	// ดึง ID จาก path
 	ID := request.GetByIdUser{}
 	if err := ctx.BindUri(&ID); err != nil {
 		logger.Err(err.Error())
@@ -161,11 +225,69 @@ func (ctl *Controller) Update(ctx *gin.Context) {
 		return
 	}
 
-	body := request.UpdateUser{}
-	if err := ctx.Bind(&body); err != nil {
-		logger.Err(err.Error())
-		response.BadRequest(ctx, err.Error())
+	// อ่านค่าทีละฟิลด์จาก multipart/form-data
+	firstName := ctx.PostForm("first_name")
+	lastName := ctx.PostForm("last_name")
+	email := ctx.PostForm("email")
+	password := ctx.PostForm("password")
+	phone := ctx.PostForm("phone")
+	positionName := ctx.PostForm("position_name")
+	existingImageURL := ctx.PostForm("existing_image_url")
+
+	if firstName == "" || lastName == "" || email == "" || phone == "" || positionName == "" {
+		response.BadRequest(ctx, "ข้อมูลไม่ครบ")
 		return
+	}
+
+	// เตรียม imageURL
+	imageURL := existingImageURL
+	file, err := ctx.FormFile("image_url")
+	if err == nil {
+		src, err := file.Open()
+		if err != nil {
+			logger.Errf("cannot open uploaded file: %v", err)
+			response.InternalError(ctx, "ไม่สามารถเปิดไฟล์ได้")
+			return
+		}
+		defer src.Close()
+
+		cld, err := cloudinary.NewFromParams(
+			os.Getenv("CLOUDINARY_CLOUD_NAME"),
+			os.Getenv("CLOUDINARY_API_KEY"),
+			os.Getenv("CLOUDINARY_API_SECRET"),
+		)
+		if err != nil {
+			logger.Errf("cloudinary config error: %v", err)
+			response.InternalError(ctx, "Cloudinary ตั้งค่าไม่ถูกต้อง")
+			return
+		}
+
+		uploadCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+		defer cancel()
+
+		uploadResult, err := cld.Upload.Upload(uploadCtx, src, uploader.UploadParams{
+			Folder:   "user",
+			PublicID: fmt.Sprintf("user_%d", time.Now().UnixNano()),
+		})
+		if err != nil {
+			logger.Errf("upload to cloudinary failed: %v", err)
+			response.InternalError(ctx, "ไม่สามารถอัปโหลดรูปภาพได้")
+			return
+		}
+		imageURL = uploadResult.SecureURL
+	}
+
+	// สร้าง request และเรียก service
+	body := request.UpdateUser{
+		CreateUser: request.CreateUser{
+			FirstName:     firstName,
+			LastName:      lastName,
+			Email:         email,
+			Password:      password,
+			Phone:         phone,
+			Position_Name: positionName,
+			Image_url:     imageURL,
+		},
 	}
 
 	_, mserr, err := ctl.Service.Update(ctx, body, ID)
@@ -178,6 +300,7 @@ func (ctl *Controller) Update(ctx *gin.Context) {
 		response.InternalError(ctx, ms)
 		return
 	}
+
 	response.Success(ctx, nil)
 }
 

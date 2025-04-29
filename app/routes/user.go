@@ -12,7 +12,7 @@ func User(router *gin.RouterGroup) {
 	ctl := controller.New() // Pass the *bun.DB to the controller
 	user := router.Group("")
 	{
-		user.POST("/create", ctl.UserCtl.Create)
+		user.POST("/register", ctl.UserCtl.Create)
 	}
 		user.Use(middleware.AuthMiddleware())
 	{

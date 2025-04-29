@@ -109,15 +109,12 @@ func (ctl *Controller) List(ctx *gin.Context) {
 	if req.Page == 0 {
 		req.Page = 1
 	}
-
-	if req.Page == 0 {
-		req.Page = 10
+	if req.Size == 0 {
+		req.Size = 10
 	}
-
 	if req.OrderBy == "" {
 		req.OrderBy = "asc"
 	}
-
 	if req.SortBy == "" {
 		req.SortBy = "created_at"
 	}
@@ -129,5 +126,16 @@ func (ctl *Controller) List(ctx *gin.Context) {
 		return
 	}
 
-	response.SuccessWithPaginate(ctx, data, req.Size, req.Page, count)
+	// 🔽 เพิ่มส่วนนี้เพื่อแปลงข้อมูลก่อนส่งออก
+	positions := make([]response.ListPosition, 0, len(data))
+	for _, p := range data {
+		positions = append(positions, response.ListPosition{
+			ID:        p.ID,
+			Name:      p.Name,
+			CreatedAt: p.CreatedAt,
+			UpdatedAt: p.UpdatedAt,
+		})
+	}
+
+	response.SuccessWithPaginate(ctx, positions, req.Size, req.Page, count)
 }

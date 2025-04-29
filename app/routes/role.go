@@ -13,6 +13,7 @@ func Role(router *gin.RouterGroup) {
 	role.Use(middleware.AuthMiddleware())
 	{
 		role.POST("/create", ctl.RoleCtl.Create)
+		role.GET("/list", ctl.RoleCtl.List)
 		role.DELETE("/delete/:id", ctl.RoleCtl.Delete)
 	}
 }

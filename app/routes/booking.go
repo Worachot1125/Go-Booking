@@ -2,6 +2,7 @@ package routes
 
 import (
 	"app/app/controller"
+	"app/app/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -10,6 +11,7 @@ func Booking(router *gin.RouterGroup) {
 	// Get the *bun.DB instance from config
 	ctl := controller.New() // Pass the *bun.DB to the controller
 	booking := router.Group("")
+	booking.Use(middleware.AuthMiddleware())
 	{
 		booking.POST("/create", ctl.BookingCtl.Create)
 		booking.PATCH("/:id", ctl.BookingCtl.Update)

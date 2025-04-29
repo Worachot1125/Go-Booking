@@ -184,29 +184,46 @@ func (s *Service) Create(ctx context.Context, req request.CreateUser) (*model.Us
 }
 
 func (s *Service) Update(ctx context.Context, req request.UpdateUser, id request.GetByIdUser) (*model.User, bool, error) {
+	// ตรวจสอบว่า user มีอยู่หรือไม่
 	ex, err := s.db.NewSelect().Table("users").Where("id = ?", id.ID).Exists(ctx)
 	if err != nil {
 		return nil, false, err
 	}
 	if !ex {
-		return nil, false, err
+		return nil, false, errors.New("user not found")
 	}
 
+	// หา position_id จาก position_name
+	var positionID string
+	err = s.db.NewSelect().
+		Model((*model.Position)(nil)).
+		Column("id").
+		Where("name = ?", req.Position_Name).
+		Scan(ctx, &positionID)
+	if err != nil {
+		return nil, false, errors.New("ไม่พบตำแหน่งงานที่ระบุ")
+	}
+
+	// เข้ารหัสรหัสผ่านใหม่
 	bytes, err := bcrypt.GenerateFromPassword([]byte(req.Password), 10)
 	if err != nil {
 		return nil, false, err
 	}
+
+	// เตรียมข้อมูล user สำหรับอัปเดต
 	m := &model.User{
 		ID:          id.ID,
 		FirstName:   req.FirstName,
 		LastName:    req.LastName,
 		Email:       req.Email,
 		Password:    string(bytes),
-		Position_ID: req.Position_ID,
+		Position_ID: positionID,
 		Image_url:   req.Image_url,
 		Phone:       req.Phone,
 	}
 	m.SetUpdateNow()
+
+	// อัปเดตข้อมูลในฐานข้อมูล
 	_, err = s.db.NewUpdate().Model(m).
 		Set("first_name = ?first_name").
 		Set("last_name = ?last_name").
@@ -224,8 +241,10 @@ func (s *Service) Update(ctx context.Context, req request.UpdateUser, id request
 		if strings.Contains(err.Error(), "duplicate key value") {
 			return nil, true, errors.New("user already exists")
 		}
+		return nil, false, err
 	}
-	return m, false, err
+
+	return m, false, nil
 }
 
 func (s *Service) List(ctx context.Context, req request.ListUser) ([]response.ListUser, int, error) {

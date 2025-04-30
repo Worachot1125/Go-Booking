@@ -41,5 +41,3 @@ func command() error {
 
 	return cmda.Execute()
 }
-
-

@@ -2,7 +2,6 @@ package routes
 
 import (
 	"app/app/controller"
-	"app/app/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,7 +14,6 @@ func Room(router *gin.RouterGroup) {
 		room.GET("/list", ctl.RoomCtl.List)
 		room.GET("/:id", ctl.RoomCtl.Get)
 	}
-	room.Use(middleware.AuthMiddleware())
 	{
 		room.POST("/create", ctl.RoomCtl.Create)
 		room.PATCH("/:id", ctl.RoomCtl.Update)

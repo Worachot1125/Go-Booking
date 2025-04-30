@@ -11,10 +11,12 @@ func Building(router *gin.RouterGroup) {
 	ctl := controller.New() // Pass the *bun.DB to the controller
 	building := router.Group("")
 	{
+		building.GET("/list", ctl.BuildingCtl.List)
+		building.GET("/:id", ctl.BuildingCtl.Get)
+	}
+	{
 		building.POST("/create", ctl.BuildingCtl.Create)
-		building.PATCH("/:id",ctl.BuildingCtl.Update)
-		building.GET("/list",ctl.BuildingCtl.List)
-		building.GET("/:id",ctl.BuildingCtl.Get)
-		building.DELETE("/:id",ctl.BuildingCtl.Delete)
+		building.PATCH("/:id", ctl.BuildingCtl.Update)
+		building.DELETE("/:id", ctl.BuildingCtl.Delete)
 	}
 }

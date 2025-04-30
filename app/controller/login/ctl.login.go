@@ -3,11 +3,11 @@ package login
 import (
 	"app/app/request"
 	"app/app/response"
-	"net/http"
 	"app/app/util/jwt"
+	"net/http"
 
-	jwt5 "github.com/golang-jwt/jwt/v5"
 	"github.com/gin-gonic/gin"
+	jwt5 "github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/viper"
 )
 
@@ -24,6 +24,7 @@ func (ctl *Controller) Login(ctx *gin.Context) {
 		return
 	}
 
+	// สร้าง token
 	claims := jwt5.MapClaims{
 		"user_id": user.ID,
 		"email":   user.Email,
@@ -35,6 +36,18 @@ func (ctl *Controller) Login(ctx *gin.Context) {
 		return
 	}
 
+	// ตั้งค่า cookie สำหรับ token
+	ctx.SetCookie(
+		"token", // ชื่อของ cookie
+		token,   // ค่า (value) ของ cookie
+		3600,    // อายุของ cookie (ในที่นี้คือ 1 ชั่วโมง)
+		"/",     // path ที่ cookie จะใช้ได้
+		"",      // domain (ถ้าต้องการสามารถกำหนดได้)
+		false,   // secure (ตั้งเป็น true ถ้าใช้ https)
+		true,    // httpOnly (ตั้งเป็น true เพื่อป้องกันการเข้าถึง cookie จาก JavaScript)
+	)
+
+	// ส่งกลับ user และ token ใน response (หากจำเป็นต้องส่ง)
 	ctx.JSON(http.StatusOK, gin.H{
 		"user":  user,
 		"token": token,

@@ -29,9 +29,8 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Optionally, you can set the claims in the context for further use in your handlers
+		// Set claims in context
 		ctx.Set("claims", claims)
-
 		ctx.Next()
 	}
 }

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"app/app/middleware"
 	"app/app/routes"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +15,7 @@ func HttpCmd() *cobra.Command {
 		Short: "Run server on HTTP protocol",
 		Run: func(cmd *cobra.Command, args []string) {
 			r := gin.Default()
+			r.Use(middleware.CORSMiddleware())
 			routes.Router(r)
 			r.Run(":8080") // Start server on port 8080
 		},

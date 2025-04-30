@@ -1,10 +1,9 @@
-// app/routes/routes.go
 package routes
 
 import (
-	"net/http"
-
 	"app/internal/logger"
+	"net/http"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -15,24 +14,26 @@ import (
 // Router sets up all the routes for the application
 func Router(app *gin.Engine) {
 
+	// CORS Middleware
+	app.Use(cors.New(cors.Config{
+		AllowOriginFunc: func(origin string) bool {
+			return origin == "http://localhost:3000"
+		},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
+	// Middleware
+	app.Use(otelgin.Middleware(viper.GetString("APP_NAME")))
+
 	// Health check endpoint
 	app.GET("/healthz", func(ctx *gin.Context) {
 		logger.Infof("Health check passed")
 		ctx.JSON(http.StatusOK, gin.H{"status": "Health check passed.", "message": "Welcome to Project-k API."})
 	})
-
-	// Middleware
-	app.Use(otelgin.Middleware(viper.GetString("APP_NAME")))
-	app.Use(cors.New(cors.Config{
-		AllowAllOrigins:        true,
-		AllowMethods:           []string{"*"},
-		AllowHeaders:           []string{"*"},
-		AllowCredentials:       true,
-		AllowWildcard:          true,
-		AllowBrowserExtensions: true,
-		AllowWebSockets:        true,
-		AllowFiles:             false,
-	}))
 
 	// Create a new group for /api/v1
 	apiV1 := app.Group("/api/v1")
@@ -49,6 +50,4 @@ func Router(app *gin.Engine) {
 	Building_Room(apiV1.Group("/buildingRooms"))
 	Login(apiV1.Group("/login"))
 	Booking(apiV1.Group("/bookings"))
-
-
 }

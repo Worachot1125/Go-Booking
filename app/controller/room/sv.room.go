@@ -142,7 +142,6 @@ func (s *Service) Create(ctx context.Context, req request.CreateRoom) (*model.Ro
 	return &m, false, nil
 }
 
-
 func (s *Service) Update(ctx context.Context, req request.UpdateRoom, id request.GetByIdRoom) (*model.Room, bool, error) {
 	ex, err := s.db.NewSelect().Table("rooms").Where("id = ?", id.ID).Exists(ctx)
 	if err != nil {
@@ -189,24 +188,23 @@ func (s *Service) List(ctx context.Context, req request.ListRoom) ([]response.Ro
 		TableExpr("rooms as r").
 		Column("r.id", "r.name", "r.description", "r.capacity", "r.image_url", "r.created_at", "r.updated_at").Where("deleted_at IS NULL").OrderExpr("r.name ASC")
 
-		if req.Search != "" {
-			searchBy := strings.ToLower(req.SearchBy)
-			search := req.Search
-		
-			switch searchBy {
-			case "name", "description":
-				query = query.Where(fmt.Sprintf("LOWER(r.%s) LIKE ?", searchBy), "%"+strings.ToLower(search)+"%")
-			case "capacity":
-				// แปลง string -> int
-				if capValue, err := strconv.Atoi(search); err == nil {
-					query = query.Where("r.capacity = ?", capValue)
-				}
-			default:
-				// fallback ถ้าไม่กำหนดหรือไม่รองรับ
-				query = query.Where("LOWER(r.name) LIKE ?", "%"+strings.ToLower(search)+"%")
+	if req.Search != "" {
+		searchBy := strings.ToLower(req.SearchBy)
+		search := req.Search
+
+		switch searchBy {
+		case "name", "description":
+			query = query.Where(fmt.Sprintf("LOWER(r.%s) LIKE ?", searchBy), "%"+strings.ToLower(search)+"%")
+		case "capacity":
+			// แปลง string -> int
+			if capValue, err := strconv.Atoi(search); err == nil {
+				query = query.Where("r.capacity = ?", capValue)
 			}
+		default:
+			// fallback ถ้าไม่กำหนดหรือไม่รองรับ
+			query = query.Where("LOWER(r.name) LIKE ?", "%"+strings.ToLower(search)+"%")
 		}
-		
+	}
 
 	// Count total before pagination
 	count, err := query.Count(ctx)
@@ -231,7 +229,7 @@ func (s *Service) Get(ctx context.Context, id request.GetByIdRoom) (*response.Ro
 
 	err := s.db.NewSelect().
 		TableExpr("rooms as r").
-		Column("r.id", "r.name", "r.description", "r.capacity", "r.updated_at").Where("deleted_at IS NULL").
+		Column("r.id", "r.name", "r.description", "r.capacity", "r.image_url", "r.created_at", "r.updated_at").Where("deleted_at IS NULL").
 		Where("id = ?", id.ID).Where("deleted_at IS NULL").Scan(ctx, &m)
 	return &m, err
 }

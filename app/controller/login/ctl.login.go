@@ -36,6 +36,18 @@ func (ctl *Controller) Login(ctx *gin.Context) {
 		return
 	}
 
+	res := response.LoginResponse{
+		ID:          user.ID,
+		FirstName:   user.FirstName,
+		LastName:    user.LastName,
+		Email:       user.Email,
+		Position_ID: user.Position_ID,
+		Image_url:   user.Image_url,
+		Phone:       user.Phone,
+		CreatedAt:   user.CreatedAt,
+		UpdatedAt:   user.UpdatedAt,
+	}
+
 	// ตั้งค่า cookie สำหรับ token
 	ctx.SetCookie(
 		"token", // ชื่อของ cookie
@@ -49,7 +61,7 @@ func (ctl *Controller) Login(ctx *gin.Context) {
 
 	// ส่งกลับ user และ token ใน response (หากจำเป็นต้องส่ง)
 	ctx.JSON(http.StatusOK, gin.H{
-		"user":  user,
+		"user":  res,
 		"token": token,
 	})
 }

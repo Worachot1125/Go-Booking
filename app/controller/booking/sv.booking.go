@@ -107,7 +107,6 @@ func (s *Service) List(ctx context.Context, req request.ListBooking) ([]response
 	offset := (req.Page - 1) * req.Size
 	m := []response.BookingResponse{}
 
-	// สร้าง query base ที่ใช้ร่วมกัน
 	baseQuery := s.db.NewSelect().
 		TableExpr("bookings as b").
 		ColumnExpr("b.id as id").
@@ -127,7 +126,7 @@ func (s *Service) List(ctx context.Context, req request.ListBooking) ([]response
 		Join("JOIN users as u ON b.user_id::uuid = u.id").
 		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
 		Where("b.deleted_at IS NULL").
-		OrderExpr("b.start_time DESC")
+		OrderExpr("b.created_at ASC")
 
 	// Filtering
 	if req.Search != "" {
@@ -136,7 +135,7 @@ func (s *Service) List(ctx context.Context, req request.ListBooking) ([]response
 			searchBy := strings.ToLower(req.SearchBy)
 			baseQuery = baseQuery.Where(fmt.Sprintf("LOWER(b.%s) LIKE ?", searchBy), search)
 		} else {
-			baseQuery = baseQuery.Where("LOWER(b.title) LIKE ?", search) // เปลี่ยนจาก name เป็น title
+			baseQuery = baseQuery.Where("LOWER(b.title) LIKE ?", search)
 		}
 	}
 
@@ -197,7 +196,7 @@ func (s *Service) Get(ctx context.Context, id request.GetByIdBooking) (*response
 		Join("JOIN users as u ON b.user_id::uuid = u.id").
 		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
 		Where("b.deleted_at IS NULL").
-		OrderExpr("b.start_time DESC").
+		OrderExpr("b.created_at ASC").
 		Scan(ctx, &m)
 	return &m, err
 }

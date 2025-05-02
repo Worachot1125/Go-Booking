@@ -22,13 +22,12 @@ type Controller struct {
 	PositionCtl        *position.Controller
 	RoleCtl            *role.Controller
 	PermissionCtl      *permission.Controller
-	Role_Permissionctl *role_permission.Controller // Assuming RoomCtl is also a product controller for this example
+	Role_Permissionctl *role_permission.Controller
 	BuildingCtl        *building.Controller
 	Building_RoomCtl   *building_room.Controller
 	BookingCtl         *booking.Controller
-	LoginCtl           *login.Controller // Assuming RoomCtl is also a product controller for this example
+	LoginCtl           *login.Controller 
 
-	// Other controllers...
 }
 
 func New() *Controller {
@@ -45,8 +44,7 @@ func New() *Controller {
 		BuildingCtl:        building.NewController(db),
 		Building_RoomCtl:   building_room.NewController(db),
 		LoginCtl:           login.NewController(db),
-		BookingCtl:         booking.NewController(db), // Assuming RoomCtl is also a product controller for this example
+		BookingCtl:         booking.NewController(db), 
 
-		// Other controllers...
 	}
 }

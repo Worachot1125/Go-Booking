@@ -65,7 +65,7 @@ func (ctl *Controller) List(ctx *gin.Context) {
 		return
 	}
 
-	if req.Page == 0{
+	if req.Page == 0 {
 		req.Page = 1
 	}
 	if req.Page == 0 {
@@ -81,12 +81,12 @@ func (ctl *Controller) List(ctx *gin.Context) {
 	}
 
 	data, total, err := ctl.Service.List(ctx, req)
-	if err != nil{
+	if err != nil {
 		logger.Errf(err.Error())
-		response.InternalError(ctx,err.Error())
+		response.InternalError(ctx, err.Error())
 		return
 	}
-	response.SuccessWithPaginate(ctx,data,req.Size,req.Page,total)
+	response.SuccessWithPaginate(ctx, data, req.Size, req.Page, total)
 
 }
 
@@ -101,7 +101,7 @@ func (ctl *Controller) Get(ctx *gin.Context) {
 	data, err := ctl.Service.Get(ctx, ID)
 	if err != nil {
 		logger.Errf(err.Error())
-		response.InternalError(ctx,err.Error())
+		response.InternalError(ctx, err.Error())
 		return
 	}
 	response.Success(ctx, data)
@@ -115,10 +115,10 @@ func (ctl *Controller) Delete(ctx *gin.Context) {
 		return
 	}
 
-	err := ctl.Service.Delete(ctx,ID)
+	err := ctl.Service.Delete(ctx, ID)
 	if err != nil {
 		logger.Errf(err.Error())
-		response.InternalError(ctx,err.Error())
+		response.InternalError(ctx, err.Error())
 		return
 	}
 	response.Success(ctx, nil)

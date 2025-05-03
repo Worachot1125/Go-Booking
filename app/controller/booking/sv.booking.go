@@ -65,42 +65,53 @@ func (s *Service) Update(ctx context.Context, req request.UpdateBooking, id requ
 		return nil, false, err
 	}
 	if !ex {
-		return nil, false, err
+		return nil, false, errors.New("booking not found")
 	}
 
-	m := &model.Booking{
-		ID:          id.ID,
-		UserID:      req.UserID,
-		RoomID:      req.RoomID,
-		Title:       req.Title,
-		Description: req.Description,
-		Phone:       req.Phone,
-		StartTime:   parseTime(req.StartTime),
-		EndTime:     parseTime(req.EndTime),
-		Status:      enum.BookingStatus(req.Status),
+	m := &model.Booking{ID: id.ID}
+	q := s.db.NewUpdate().Model(m).WherePK().OmitZero().Returning("*")
+
+	if req.RoomID != "" {
+		m.RoomID = req.RoomID
+		q.Set("room_id = ?room_id")
+	}
+	if req.Description != "" {
+		m.Description = req.Description
+		q.Set("description = ?description")
+	}
+	if req.Phone != "" {
+		m.Phone = req.Phone
+		q.Set("phone = ?phone")
+	}
+	if req.Title != "" {
+		m.Title = req.Title
+		q.Set("title = ?title")
+	}
+	if req.StartTime != "" {
+		m.StartTime = parseTime(req.StartTime)
+		q.Set("start_time = ?start_time")
+	}
+	if req.EndTime != "" {
+		m.EndTime = parseTime(req.EndTime)
+		q.Set("end_time = ?end_time")
+	}
+	if req.Status != "" {
+		m.Status = enum.BookingStatus(req.Status)
+		q.Set("status = ?status")
 	}
 
 	m.SetUpdateNow()
+	q.Set("updated_at = ?updated_at")
 
-	_, err = s.db.NewUpdate().Model(m).
-		Set("room_id = ?room_id").
-		Set("description = ?description").
-		Set("phone = ?phone").
-		Set("start_time = ?start_time").
-		Set("end_time = ?end_time").
-		Set("status = ?status").
-		Set("updated_at = ?updated_at").
-		WherePK().
-		OmitZero().
-		Returning("*").
-		Exec(ctx)
+	_, err = q.Exec(ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {
 			return nil, true, errors.New("booking already exists")
 		}
+		return nil, false, err
 	}
 
-	return m, false, err
+	return m, false, nil
 }
 
 func (s *Service) List(ctx context.Context, req request.ListBooking) ([]response.BookingResponse, int, error) {
@@ -128,7 +139,6 @@ func (s *Service) List(ctx context.Context, req request.ListBooking) ([]response
 		Where("b.deleted_at IS NULL").
 		OrderExpr("b.created_at ASC")
 
-	// Filtering
 	if req.Search != "" {
 		search := "%" + strings.ToLower(req.Search) + "%"
 		if req.SearchBy != "" {
@@ -139,7 +149,6 @@ func (s *Service) List(ctx context.Context, req request.ListBooking) ([]response
 		}
 	}
 
-	// ใช้ baseQuery สำหรับการนับจำนวนข้อมูล
 	countQuery := s.db.NewSelect().
 		TableExpr("bookings as b").
 		ColumnExpr("COUNT(*)").
@@ -147,7 +156,6 @@ func (s *Service) List(ctx context.Context, req request.ListBooking) ([]response
 		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
 		Where("b.deleted_at IS NULL")
 
-	// ใช้การ filter เดียวกับการดึงข้อมูลหลัก
 	if req.Search != "" {
 		search := "%" + strings.ToLower(req.Search) + "%"
 		if req.SearchBy != "" {
@@ -158,14 +166,12 @@ func (s *Service) List(ctx context.Context, req request.ListBooking) ([]response
 		}
 	}
 
-	// คำนวณจำนวนทั้งหมด
 	var count int
 	err := countQuery.Scan(ctx, &count)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// Final query สำหรับดึงข้อมูล
 	order := fmt.Sprintf("b.%s %s", req.SortBy, req.OrderBy)
 	err = baseQuery.Order(order).Limit(req.Size).Offset(offset).Scan(ctx, &m)
 	if err != nil {

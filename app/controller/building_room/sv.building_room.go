@@ -11,20 +11,20 @@ import (
 )
 
 func (s *Service) Create(ctx context.Context, req request.CreateBuilding_Room) (*model.Building_Room, bool, error) {
-	
+
 	exists, err := s.db.NewSelect().
-	Model((*model.Building_Room)(nil)).
-	Where("room_id = ?", req.RoomID).
-	Exists(ctx)
+		Model((*model.Building_Room)(nil)).
+		Where("room_id = ?", req.RoomID).
+		Exists(ctx)
 	if err != nil {
-		return nil, false, err 
+		return nil, false, err
 	}
 	if exists {
 		return nil, true, errors.New("room_id นี้มีอยู่แล้วใน building_rooms")
 	}
-	
+
 	m := &model.Building_Room{
-		RoomID: req.RoomID,
+		RoomID:     req.RoomID,
 		BuildingID: req.BuildingID,
 	}
 
@@ -50,9 +50,9 @@ func (s *Service) Update(ctx context.Context, req request.UpdateBuilding_Room, i
 	}
 
 	m := &model.Building_Room{
-		ID:          id.ID,
-		RoomID:      req.RoomID,
-		BuildingID:  req.BuildingID,
+		ID:         id.ID,
+		RoomID:     req.RoomID,
+		BuildingID: req.BuildingID,
 	}
 
 	m.SetUpdateNow()
@@ -92,7 +92,6 @@ func (s *Service) List(ctx context.Context, req request.ListBuilding_Room) ([]re
 		Where("br.deleted_at IS NULL").
 		OrderExpr("r.name ASC")
 
-
 	// Filtering
 	if req.Search != "" {
 		search := "%" + strings.ToLower(req.Search) + "%"
@@ -126,28 +125,52 @@ func (s *Service) Get(ctx context.Context, id request.GetByIdBuilding_Room) (*re
 	m := response.Building_RoomResponse{}
 
 	err := s.db.NewSelect().
-	TableExpr("building_rooms AS br").
-	ColumnExpr("br.id AS building_room_id").
-	ColumnExpr("r.id AS room_id").
-	ColumnExpr("r.name AS room_name").
-	ColumnExpr("b.id AS building_id").
-	ColumnExpr("b.name AS building_name").
-	Join("JOIN rooms AS r ON br.room_id::uuid = r.id"). // 👈 cast ถ้า type ไม่ตรง
-	Join("JOIN buildings AS b ON br.building_id::uuid = b.id").
-	Where("br.deleted_at IS NULL").
-	Scan(ctx, &m)
+		TableExpr("building_rooms AS br").
+		ColumnExpr("br.id AS building_room_id").
+		ColumnExpr("r.id AS room_id").
+		ColumnExpr("r.name AS room_name").
+		ColumnExpr("b.id AS building_id").
+		ColumnExpr("b.name AS building_name").
+		Join("JOIN rooms AS r ON br.room_id::uuid = r.id"). // 👈 cast ถ้า type ไม่ตรง
+		Join("JOIN buildings AS b ON br.building_id::uuid = b.id").
+		Where("br.deleted_at IS NULL").
+		Scan(ctx, &m)
+	return &m, err
+}
+
+func (s *Service) GetByIDroom(ctx context.Context, id request.GetByIdRoom) (*response.RoomWithBuildingResponse, error) {
+	m := response.RoomWithBuildingResponse{}
+
+	err := s.db.NewSelect().
+		TableExpr("rooms AS r").
+		ColumnExpr("r.id AS room_id").
+		ColumnExpr("r.name AS room_name").
+		ColumnExpr("r.description").
+		ColumnExpr("r.capacity").
+		ColumnExpr("r.image_url").
+		ColumnExpr("r.created_at").
+		ColumnExpr("r.updated_at").
+		ColumnExpr("b.id AS building_id").
+		ColumnExpr("b.name AS building_name").
+		Join("JOIN building_rooms AS br ON br.room_id::uuid = r.id").
+		Join("JOIN buildings AS b ON b.id = br.building_id::uuid").
+		Where("r.id = ?", id.ID).
+		Where("r.deleted_at IS NULL").
+		Where("b.deleted_at IS NULL").
+		Scan(ctx, &m)
+
 	return &m, err
 }
 
 func (s *Service) Delete(ctx context.Context, id request.GetByIdBuilding_Room) error {
 	ex, err := s.db.NewSelect().Table("building_rooms").Where("id = ?", id.ID).Where("deleted_at IS NULL").Exists(ctx)
 	if err != nil {
-		return  err
+		return err
 	}
 	if !ex {
 		return errors.New("building_room not found")
 	}
 
-	_, err = s.db.NewDelete().Model((*model.Building_Room)(nil)).Where("id = ?",id.ID).Exec(ctx)
+	_, err = s.db.NewDelete().Model((*model.Building_Room)(nil)).Where("id = ?", id.ID).Exec(ctx)
 	return err
 }

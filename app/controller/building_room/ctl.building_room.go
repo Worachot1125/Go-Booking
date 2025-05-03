@@ -107,6 +107,24 @@ func (ctl *Controller) Get(ctx *gin.Context) {
 	response.Success(ctx, data)
 }
 
+func (ctl *Controller) GetByIDroom(ctx *gin.Context) {
+	ID := request.GetByIdRoom{}
+	if err := ctx.BindUri(&ID); err != nil {
+		logger.Err(err.Error())
+		response.BadRequest(ctx, err.Error())
+		return
+	}
+
+	data, err := ctl.Service.GetByIDroom(ctx, ID)
+	if err != nil {
+		logger.Errf(err.Error())
+		response.InternalError(ctx, err.Error())
+		return
+	}
+
+	response.Success(ctx, data)
+}
+
 func (ctl *Controller) Delete(ctx *gin.Context) {
 	ID := request.GetByIdBuilding_Room{}
 	if err := ctx.BindUri(&ID); err != nil {

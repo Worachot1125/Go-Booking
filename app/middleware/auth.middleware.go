@@ -10,27 +10,30 @@ import (
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		var token string
+
+		// ดึงจาก Authorization header
 		authHeader := ctx.GetHeader("Authorization")
-		if authHeader == "" {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
-			return
+		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+			token = strings.TrimPrefix(authHeader, "Bearer ")
+		} else {
+			// ตรวจ token จาก cookie
+			cookieToken, err := ctx.Cookie("token")
+			if err != nil || cookieToken == "" {
+				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization token is required"})
+				return
+			}
+			token = cookieToken
 		}
 
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header format must be Bearer {token}"})
-			return
-		}
-
-		token := parts[1]
 		claims, err := jwt.VerifyToken(token)
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
 
-		// Set claims in context
 		ctx.Set("claims", claims)
 		ctx.Next()
 	}
 }
+

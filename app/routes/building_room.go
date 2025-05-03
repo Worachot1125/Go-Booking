@@ -13,6 +13,7 @@ func Building_Room(router *gin.RouterGroup) {
 	{
 		building_room.GET("/list", ctl.Building_RoomCtl.List)
 		building_room.GET("/:id", ctl.Building_RoomCtl.Get)
+		building_room.GET("/room/:id", ctl.Building_RoomCtl.GetByIDroom)
 	}
 	{
 		building_room.POST("/create", ctl.Building_RoomCtl.Create)

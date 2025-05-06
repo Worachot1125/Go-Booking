@@ -231,7 +231,7 @@ func (s *Service) GetByRoomId(ctx context.Context, req request.GetByRoomIdBookin
 		Join("JOIN users as u ON b.user_id::uuid = u.id").
 		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
 		Where("b.deleted_at IS NULL").
-		Where("r.id = ?", req.RoomID). // ตรวจสอบว่า RoomID ถูกต้องและเป็น UUID
+		Where("r.id = ?", req.RoomID).
 		OrderExpr("start_time ASC")
 
 	count, err := query.Count(ctx)

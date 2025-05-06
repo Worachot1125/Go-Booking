@@ -174,3 +174,19 @@ func (s *Service) Delete(ctx context.Context, id request.GetByIdBuilding_Room) e
 	_, err = s.db.NewDelete().Model((*model.Building_Room)(nil)).Where("id = ?", id.ID).Exec(ctx)
 	return err
 }
+
+func (s *Service) GetRoomsByBuildingID(ctx context.Context, id request.GetByIdBuilding_Room) ([]response.RoomIDbyBuildingIDResponse, error) {
+	var results []response.RoomIDbyBuildingIDResponse
+
+	err := s.db.NewSelect().
+		TableExpr("building_rooms AS br").
+		ColumnExpr("r.id AS room_id").
+		ColumnExpr("b.id AS building_id").
+		Join("JOIN rooms AS r ON br.room_id::uuid = r.id").
+		Join("JOIN buildings AS b ON br.building_id::uuid = b.id").
+		Where("br.deleted_at IS NULL").
+		Where("br.building_id = ?", id.ID).
+		Scan(ctx, &results)
+
+	return results, err
+}

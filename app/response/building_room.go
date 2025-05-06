@@ -22,3 +22,8 @@ type RoomWithBuildingResponse struct {
 	BuildingID   string `json:"building_id"`
 	BuildingName string `json:"building_name"`
 }
+
+type RoomIDbyBuildingIDResponse struct {
+	BuildingID string `json:"building_id"`
+	RoomID      string `json:"room_id"`
+}

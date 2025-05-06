@@ -25,3 +25,4 @@ type Booking struct {
 	CreateUpdateUnixTimestamp
 	SoftDelete
 }
+

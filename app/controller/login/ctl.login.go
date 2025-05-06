@@ -30,7 +30,7 @@ func (ctl *Controller) Login(ctx *gin.Context) {
 		"email":   user.Email,
 	}
 
-	token, err := jwt.CreateToken(claims, viper.GetString("TOKEN_SECRET_USER"))
+	token, err := jwt.CreateToken(claims, viper.GetString("JWT_SECRET_USER"))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return

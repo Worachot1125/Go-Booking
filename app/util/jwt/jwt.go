@@ -27,7 +27,7 @@ func VerifyToken(raw string) (map[string]any, error) {
 		}
 
 		// Use the secret key from the configuration
-		secret := []byte(viper.GetString("TOKEN_SECRET_USER"))
+		secret := []byte(viper.GetString("JWT_SECRET_USER"))
 		return secret, nil
 	})
 

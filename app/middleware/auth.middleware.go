@@ -17,7 +17,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
 			token = strings.TrimPrefix(authHeader, "Bearer ")
 		} else {
-			// ตรวจ token จาก cookie
+			// ดึงจาก cookie
 			cookieToken, err := ctx.Cookie("token")
 			if err != nil || cookieToken == "" {
 				ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization token is required"})
@@ -26,14 +26,16 @@ func AuthMiddleware() gin.HandlerFunc {
 			token = cookieToken
 		}
 
+		// ตรวจสอบ token
 		claims, err := jwt.VerifyToken(token)
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
 
-		ctx.Set("claims", claims)
+		mapClaims := claims 
+
+		ctx.Set("claims", mapClaims)
 		ctx.Next()
 	}
 }
-

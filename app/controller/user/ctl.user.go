@@ -1,16 +1,11 @@
 package user
 
 import (
+	"app/app/helper"
 	"app/app/request"
 	"app/app/response"
 	"app/internal/logger"
-	"context"
-	"fmt"
-	"os"
-	"time"
 
-	"github.com/cloudinary/cloudinary-go"
-	"github.com/cloudinary/cloudinary-go/api/uploader"
 	"github.com/gin-gonic/gin"
 )
 
@@ -166,24 +161,8 @@ func (ctl *Controller) Create(ctx *gin.Context) {
 	}
 	defer src.Close()
 
-	cld, err := cloudinary.NewFromParams(
-		os.Getenv("CLOUDINARY_CLOUD_NAME"),
-		os.Getenv("CLOUDINARY_API_KEY"),
-		os.Getenv("CLOUDINARY_API_SECRET"),
-	)
-	if err != nil {
-		logger.Errf("Cloudinary config error: %v", err)
-		response.InternalError(ctx, "การตั้งค่า Cloudinary ไม่ถูกต้อง")
-		return
-	}
+	imageURL, err := helper.UploadImageToCloudinary(src)
 
-	uploadCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
-
-	uploadResult, err := cld.Upload.Upload(uploadCtx, src, uploader.UploadParams{
-		Folder:   "user",
-		PublicID: fmt.Sprintf("user_%d", time.Now().UnixNano()),
-	})
 	if err != nil {
 		logger.Errf("Upload to Cloudinary failed: %v", err)
 		response.InternalError(ctx, "ไม่สามารถอัปโหลดรูปภาพได้")
@@ -198,7 +177,7 @@ func (ctl *Controller) Create(ctx *gin.Context) {
 		Password:      password,
 		Phone:         phone,
 		Position_Name: positionName,
-		Image_url:     uploadResult.SecureURL,
+		Image_url:     imageURL,
 	}
 
 	// เรียก Service
@@ -251,30 +230,12 @@ func (ctl *Controller) Update(ctx *gin.Context) {
 		}
 		defer src.Close()
 
-		cld, err := cloudinary.NewFromParams(
-			os.Getenv("CLOUDINARY_CLOUD_NAME"),
-			os.Getenv("CLOUDINARY_API_KEY"),
-			os.Getenv("CLOUDINARY_API_SECRET"),
-		)
-		if err != nil {
-			logger.Errf("cloudinary config error: %v", err)
-			response.InternalError(ctx, "Cloudinary ตั้งค่าไม่ถูกต้อง")
-			return
-		}
-
-		uploadCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
-		defer cancel()
-
-		uploadResult, err := cld.Upload.Upload(uploadCtx, src, uploader.UploadParams{
-			Folder:   "user",
-			PublicID: fmt.Sprintf("user_%d", time.Now().UnixNano()),
-		})
+		imageURL, err = helper.UploadImageToCloudinary(src)
 		if err != nil {
 			logger.Errf("upload to cloudinary failed: %v", err)
 			response.InternalError(ctx, "ไม่สามารถอัปโหลดรูปภาพได้")
 			return
 		}
-		imageURL = uploadResult.SecureURL
 	}
 
 	// สร้าง request และเรียก service

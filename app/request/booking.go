@@ -39,3 +39,4 @@ type GetByRoomIdBooking struct {
 	SearchBy string `form:"search_by"`
 	RoomID   string `form:"room_id"`
 }
+

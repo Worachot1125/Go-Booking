@@ -1,6 +1,7 @@
 package room
 
 import (
+	"app/app/helper"
 	"app/app/request"
 	"app/app/response"
 	"app/internal/logger"
@@ -166,7 +167,6 @@ func (ctl *Controller) Create(ctx *gin.Context) {
 		return
 	}
 
-	// (จากตรงนี้) - เปิดไฟล์ อัปโหลด Cloudinary
 	src, err := file.Open()
 	if err != nil {
 		logger.Errf("Cannot open uploaded file: %v", err)
@@ -175,25 +175,8 @@ func (ctl *Controller) Create(ctx *gin.Context) {
 	}
 	defer src.Close()
 
-	// อัปโหลด Cloudinary ตามเดิม
-	cld, err := cloudinary.NewFromParams(
-		os.Getenv("CLOUDINARY_CLOUD_NAME"),
-		os.Getenv("CLOUDINARY_API_KEY"),
-		os.Getenv("CLOUDINARY_API_SECRET"),
-	)
-	if err != nil {
-		logger.Errf("Cloudinary config error: %v", err)
-		response.InternalError(ctx, "การตั้งค่า Cloudinary ไม่ถูกต้อง")
-		return
-	}
+	imageURL, err := helper.UploadImageToCloudinary(src)
 
-	uploadCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
-
-	uploadResult, err := cld.Upload.Upload(uploadCtx, src, uploader.UploadParams{
-		Folder:   "room",
-		PublicID: fmt.Sprintf("room_%d", time.Now().UnixNano()),
-	})
 	if err != nil {
 		logger.Errf("Upload to Cloudinary failed: %v", err)
 		response.InternalError(ctx, "ไม่สามารถอัปโหลดรูปภาพได้")
@@ -205,7 +188,7 @@ func (ctl *Controller) Create(ctx *gin.Context) {
 		Name:        name,
 		Description: description,
 		Capacity:    int64(capacity),
-		Image_url:   uploadResult.SecureURL,
+		Image_url:   imageURL,
 	}
 
 	// เรียก Service.Create
@@ -264,31 +247,14 @@ func (ctl *Controller) Update(ctx *gin.Context) {
 		}
 		defer src.Close()
 
-		cld, err := cloudinary.NewFromParams(
-			os.Getenv("CLOUDINARY_CLOUD_NAME"),
-			os.Getenv("CLOUDINARY_API_KEY"),
-			os.Getenv("CLOUDINARY_API_SECRET"),
-		)
-		if err != nil {
-			logger.Errf("Cloudinary config error: %v", err)
-			response.InternalError(ctx, "การตั้งค่า Cloudinary ไม่ถูกต้อง")
-			return
-		}
+		imageURL, err = helper.UploadImageToCloudinary(src)
 
-		uploadCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
-		defer cancel()
-
-		uploadResult, err := cld.Upload.Upload(uploadCtx, src, uploader.UploadParams{
-			Folder:   "room",
-			PublicID: fmt.Sprintf("room_%d", time.Now().UnixNano()),
-		})
 		if err != nil {
 			logger.Errf("Upload to Cloudinary failed: %v", err)
 			response.InternalError(ctx, "ไม่สามารถอัปโหลดรูปภาพได้")
 			return
 		}
 
-		imageURL = uploadResult.SecureURL
 	}
 
 	// ส่งไป service

@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-
 func (ctl *Controller) Create(ctx *gin.Context) {
 	req := request.CreateBooking{}
 	if err := ctx.Bind(&req); err != nil {
@@ -66,7 +65,7 @@ func (ctl *Controller) List(ctx *gin.Context) {
 		return
 	}
 
-	if req.Page == 0{
+	if req.Page == 0 {
 		req.Page = 1
 	}
 	if req.Page == 0 {
@@ -82,12 +81,12 @@ func (ctl *Controller) List(ctx *gin.Context) {
 	}
 
 	data, total, err := ctl.Service.List(ctx, req)
-	if err != nil{
+	if err != nil {
 		logger.Errf(err.Error())
-		response.InternalError(ctx,err.Error())
+		response.InternalError(ctx, err.Error())
 		return
 	}
-	response.SuccessWithPaginate(ctx,data,req.Size,req.Page,total)
+	response.SuccessWithPaginate(ctx, data, req.Size, req.Page, total)
 
 }
 
@@ -99,36 +98,50 @@ func (ctl *Controller) Get(ctx *gin.Context) {
 		return
 	}
 
-	data, err := ctl.Service.Get(ctx,ID)
+	data, err := ctl.Service.Get(ctx, ID)
 	if err != nil {
 		logger.Errf(err.Error())
-		response.InternalError(ctx,err.Error())
+		response.InternalError(ctx, err.Error())
 		return
 	}
 	response.Success(ctx, data)
 }
 
 func (ctl *Controller) GetByRoomId(ctx *gin.Context) {
-    // สมมติว่า roomID เป็น string ที่ได้จาก URL หรือการส่งข้อมูล
-    roomID := ctx.Param("id") // หรือวิธีที่คุณได้ค่า roomID
+	roomID := ctx.Param("id")
 
-    // สร้างอ็อบเจ็กต์ request.GetByRoomIdBooking และตั้งค่า RoomID
-    req := request.GetByRoomIdBooking{
-        RoomID: roomID, // ตั้งค่า RoomID ให้กับตัวแปรที่รับมา
-        // อาจจะมีค่าต่างๆ อื่นๆ เช่น Page, Size ที่จะตั้งค่าเช่นกัน
-        Page: 1,  // ตัวอย่างค่า Page
-        Size: 10, // ตัวอย่างค่า Size
-    }
+	req := request.GetByRoomIdBooking{
+		RoomID: roomID,
+		Page:   1,
+		Size:   10,
+	}
 
-    // ส่งอ็อบเจ็กต์ req ไปยังฟังก์ชัน Service.GetByRoomId
-    data, total, err := ctl.Service.GetByRoomId(ctx, req)
+	// ส่งอ็อบเจ็กต์ req ไปยังฟังก์ชัน Service.GetByRoomId
+	data, total, err := ctl.Service.GetByRoomId(ctx, req)
 
-    if err != nil {
-        logger.Errf(err.Error())
-        response.InternalError(ctx, err.Error())
-        return
-    }
-    response.SuccessWithPaginate(ctx, data, 0, 0, total)
+	if err != nil {
+		logger.Errf(err.Error())
+		response.InternalError(ctx, err.Error())
+		return
+	}
+	response.SuccessWithPaginate(ctx, data, 0, 0, total)
+}
+
+func (ctl *Controller) GetBookingByUserID(ctx *gin.Context) {
+	ID := request.GetByIdUser{}
+	if err := ctx.BindUri(&ID); err != nil {
+		logger.Err(err.Error())
+		response.BadRequest(ctx, err.Error())
+		return
+	}
+
+	data, err := ctl.Service.GetBookingByUserID(ctx, ID)
+	if err != nil {
+		logger.Errf(err.Error())
+		response.InternalError(ctx, err.Error())
+		return
+	}
+	response.Success(ctx, data)
 }
 
 func (ctl *Controller) Delete(ctx *gin.Context) {
@@ -139,10 +152,10 @@ func (ctl *Controller) Delete(ctx *gin.Context) {
 		return
 	}
 
-	err := ctl.Service.Delete(ctx,ID)
+	err := ctl.Service.Delete(ctx, ID)
 	if err != nil {
 		logger.Errf(err.Error())
-		response.InternalError(ctx,err.Error())
+		response.InternalError(ctx, err.Error())
 		return
 	}
 	response.Success(ctx, nil)

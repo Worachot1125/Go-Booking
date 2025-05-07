@@ -247,6 +247,32 @@ func (s *Service) GetByRoomId(ctx context.Context, req request.GetByRoomIdBookin
 	return m, count, nil
 }
 
+func (s *Service) GetBookingByUserID(ctx context.Context, id request.GetByIdUser) ([]response.BookingbyUser, error) {
+	var bookings []response.BookingbyUser
+
+	err := s.db.NewSelect().
+		TableExpr("bookings as b").
+		ColumnExpr("b.id as id").
+		ColumnExpr("u.first_name as user_name").
+		ColumnExpr("u.last_name as user_lastname").
+		ColumnExpr("r.id as room_id").
+		ColumnExpr("r.name as room_name").
+		ColumnExpr("b.title as title").
+		ColumnExpr("b.description as description").
+		ColumnExpr("b.phone as phone").
+		ColumnExpr("b.start_time as start_time").
+		ColumnExpr("b.end_time as end_time").
+		ColumnExpr("b.status as status").
+		ColumnExpr("b.updated_at as updated_at").
+		Join("JOIN users as u ON b.user_id::uuid = u.id").
+		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
+		Where("b.deleted_at IS NULL").
+		Where("b.user_id = ?", id.ID).
+		OrderExpr("b.created_at ASC").
+		Scan(ctx, &bookings)
+	return bookings, err
+}
+
 func (s *Service) Delete(ctx context.Context, id request.GetByIdBooking) error {
 	ex, err := s.db.NewSelect().Table("bookings").Where("id = ?", id.ID).Where("deleted_at IS NULL").Exists(ctx)
 	if err != nil {

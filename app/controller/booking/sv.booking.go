@@ -10,7 +10,13 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/uptrace/bun"
 )
+
+type BookingService struct {
+	db *bun.DB
+}
 
 func parseTime(timeStr string) time.Time {
 	parsedTime, err := time.Parse(time.RFC3339, timeStr)
@@ -181,6 +187,72 @@ func (s *Service) List(ctx context.Context, req request.ListBooking) ([]response
 	return m, count, nil
 }
 
+func (s *Service) ListHistory(ctx context.Context, req request.ListBooking) ([]response.BookingResponse, int, error) {
+	offset := (req.Page - 1) * req.Size
+	m := []response.BookingResponse{}
+
+	baseQuery := s.db.NewSelect().
+		TableExpr("bookings as b").
+		ColumnExpr("b.id as id").
+		ColumnExpr("u.id as user_id").
+		ColumnExpr("u.first_name as user_name").
+		ColumnExpr("u.last_name as user_lastname").
+		ColumnExpr("r.id as room_id").
+		ColumnExpr("r.name as room_name").
+		ColumnExpr("b.title as title").
+		ColumnExpr("b.description as description").
+		ColumnExpr("b.phone as phone").
+		ColumnExpr("b.start_time as start_time").
+		ColumnExpr("b.end_time as end_time").
+		ColumnExpr("b.status as status").
+		ColumnExpr("b.created_at as created_at").
+		ColumnExpr("b.updated_at as updated_at").
+		Join("JOIN users as u ON b.user_id::uuid = u.id").
+		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
+		OrderExpr("b.created_at ASC")
+
+	if req.Search != "" {
+		search := "%" + strings.ToLower(req.Search) + "%"
+		if req.SearchBy != "" {
+			searchBy := strings.ToLower(req.SearchBy)
+			baseQuery = baseQuery.Where(fmt.Sprintf("LOWER(b.%s) LIKE ?", searchBy), search)
+		} else {
+			baseQuery = baseQuery.Where("LOWER(b.title) LIKE ?", search)
+		}
+	}
+
+	countQuery := s.db.NewSelect().
+		TableExpr("bookings as b").
+		ColumnExpr("COUNT(*)").
+		Join("JOIN users as u ON b.user_id::uuid = u.id").
+		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
+		Where("b.deleted_at IS NULL")
+
+	if req.Search != "" {
+		search := "%" + strings.ToLower(req.Search) + "%"
+		if req.SearchBy != "" {
+			searchBy := strings.ToLower(req.SearchBy)
+			countQuery = countQuery.Where(fmt.Sprintf("LOWER(b.%s) LIKE ?", searchBy), search)
+		} else {
+			countQuery = countQuery.Where("LOWER(b.title) LIKE ?", search)
+		}
+	}
+
+	var count int
+	err := countQuery.Scan(ctx, &count)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	order := fmt.Sprintf("b.%s %s", req.SortBy, req.OrderBy)
+	err = baseQuery.Order(order).Limit(req.Size).Offset(offset).Scan(ctx, &m)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return m, count, nil
+}
+
 func (s *Service) Get(ctx context.Context, id request.GetByIdBooking) (*response.BookingResponse, error) {
 	m := response.BookingResponse{}
 
@@ -273,6 +345,31 @@ func (s *Service) GetBookingByUserID(ctx context.Context, id request.GetByIdUser
 	return bookings, err
 }
 
+func (s *Service) GetBookingHistoryByUserID(ctx context.Context, id request.GetByIdUser) ([]response.BookingbyUser, error) {
+	var bookings []response.BookingbyUser
+
+	err := s.db.NewSelect().
+		TableExpr("bookings as b").
+		ColumnExpr("b.id as id").
+		ColumnExpr("u.first_name as user_name").
+		ColumnExpr("u.last_name as user_lastname").
+		ColumnExpr("r.id as room_id").
+		ColumnExpr("r.name as room_name").
+		ColumnExpr("b.title as title").
+		ColumnExpr("b.description as description").
+		ColumnExpr("b.phone as phone").
+		ColumnExpr("b.start_time as start_time").
+		ColumnExpr("b.end_time as end_time").
+		ColumnExpr("b.status as status").
+		ColumnExpr("b.updated_at as updated_at").
+		Join("JOIN users as u ON b.user_id::uuid = u.id").
+		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
+		Where("b.user_id = ?", id.ID).
+		OrderExpr("b.created_at ASC").
+		Scan(ctx, &bookings)
+	return bookings, err
+}
+
 func (s *Service) Delete(ctx context.Context, id request.GetByIdBooking) error {
 	ex, err := s.db.NewSelect().Table("bookings").Where("id = ?", id.ID).Where("deleted_at IS NULL").Exists(ctx)
 	if err != nil {
@@ -283,5 +380,23 @@ func (s *Service) Delete(ctx context.Context, id request.GetByIdBooking) error {
 	}
 
 	_, err = s.db.NewDelete().Model((*model.Booking)(nil)).Where("id = ?", id.ID).Exec(ctx)
+	return err
+}
+
+func NewBookingService(db *bun.DB) *BookingService {
+	return &BookingService{db: db}
+}
+
+
+func (s *BookingService) AutoDeleteExpiredBookings() error {
+	now := time.Now()
+
+	_, err := s.db.NewUpdate().
+		Model((*model.Booking)(nil)).
+		Set("deleted_at = NOW()").
+		Where("end_time < ?", now).
+		Where("deleted_at IS NULL").
+		Exec(context.Background())
+
 	return err
 }

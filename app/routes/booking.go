@@ -14,6 +14,8 @@ func Booking(router *gin.RouterGroup) {
 		booking.GET("/list", ctl.BookingCtl.List)
 		booking.GET("/:id", ctl.BookingCtl.Get)
 		booking.GET("/user/:id", ctl.BookingCtl.GetBookingByUserID)
+		booking.GET("/history/list", ctl.BookingCtl.ListHistory)
+		booking.GET("/history/:id", ctl.BookingCtl.GetBookingHistoryByUserID)
 	}
 	{
 		booking.POST("/create", ctl.BookingCtl.Create)

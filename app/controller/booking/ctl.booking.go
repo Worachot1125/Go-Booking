@@ -90,6 +90,39 @@ func (ctl *Controller) List(ctx *gin.Context) {
 
 }
 
+func (ctl *Controller) ListHistory(ctx *gin.Context) {
+	req := request.ListBooking{}
+	if err := ctx.Bind(&req); err != nil {
+		logger.Err(err.Error())
+		response.BadRequest(ctx, err.Error())
+		return
+	}
+
+	if req.Page == 0 {
+		req.Page = 1
+	}
+	if req.Page == 0 {
+		req.Page = 10
+	}
+
+	if req.OrderBy == "" {
+		req.OrderBy = "asc"
+	}
+
+	if req.SortBy == "" {
+		req.SortBy = "created_at"
+	}
+
+	data, total, err := ctl.Service.ListHistory(ctx, req)
+	if err != nil {
+		logger.Errf(err.Error())
+		response.InternalError(ctx, err.Error())
+		return
+	}
+	response.SuccessWithPaginate(ctx, data, req.Size, req.Page, total)
+
+}
+
 func (ctl *Controller) Get(ctx *gin.Context) {
 	ID := request.GetByIdBooking{}
 	if err := ctx.BindUri(&ID); err != nil {
@@ -136,6 +169,23 @@ func (ctl *Controller) GetBookingByUserID(ctx *gin.Context) {
 	}
 
 	data, err := ctl.Service.GetBookingByUserID(ctx, ID)
+	if err != nil {
+		logger.Errf(err.Error())
+		response.InternalError(ctx, err.Error())
+		return
+	}
+	response.Success(ctx, data)
+}
+
+func (ctl *Controller) GetBookingHistoryByUserID(ctx *gin.Context) {
+	ID := request.GetByIdUser{}
+	if err := ctx.BindUri(&ID); err != nil {
+		logger.Err(err.Error())
+		response.BadRequest(ctx, err.Error())
+		return
+	}
+
+	data, err := ctl.Service.GetBookingHistoryByUserID(ctx, ID)
 	if err != nil {
 		logger.Errf(err.Error())
 		response.InternalError(ctx, err.Error())

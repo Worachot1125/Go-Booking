@@ -2,15 +2,16 @@ package routes
 
 import (
 	"app/app/controller"
+	"app/app/middleware"
 
 	"github.com/gin-gonic/gin"
 )
 
 func User_Role(router *gin.RouterGroup) {
-	// Get the *bun.DB instance from config
-	ctl := controller.New() // Pass the *bun.DB to the controller
+	ctl := controller.New()
+	md := middleware.AuthMiddleware()
 	user_role := router.Group("")
 	{
-		user_role.GET("/:id", ctl.User_RoleCtl.GetByUserID)
+		user_role.GET("/:id", md, ctl.User_RoleCtl.GetByUserID)
 	}
 }

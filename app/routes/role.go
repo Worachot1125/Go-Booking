@@ -8,12 +8,12 @@ import (
 )
 
 func Role(router *gin.RouterGroup) {
-	ctl := controller.New() // Pass the *bun.DB to the controller
+	ctl := controller.New()
+	md := middleware.AuthMiddleware()
 	role := router.Group("")
-	role.Use(middleware.AuthMiddleware())
 	{
-		role.POST("/create", ctl.RoleCtl.Create)
-		role.GET("/list", ctl.RoleCtl.List)
-		role.DELETE("/delete/:id", ctl.RoleCtl.Delete)
+		role.POST("/create", md, ctl.RoleCtl.Create)
+		role.GET("/list", md, ctl.RoleCtl.List)
+		role.DELETE("/:id", md, ctl.RoleCtl.Delete)
 	}
 }

@@ -10,16 +10,14 @@ import (
 func Position(router *gin.RouterGroup) {
 	// Get the *bun.DB instance from config
 	ctl := controller.New() // Pass the *bun.DB to the controller
+	md := middleware.AuthMiddleware()
 	position := router.Group("")
 	{
 		position.GET("/list", ctl.PositionCtl.List)
 		position.GET("/:id", ctl.PositionCtl.Get)
-	}
-	position.Use(middleware.AuthMiddleware())
-	{
-		position.POST("/create", ctl.PositionCtl.Create)
-		position.PATCH("/:id", ctl.PositionCtl.Update)
-		position.DELETE("/:id", ctl.PositionCtl.Delete)
+		position.POST("/create", md, ctl.PositionCtl.Create)
+		position.PATCH("/:id", md, ctl.PositionCtl.Update)
+		position.DELETE("/:id", md, ctl.PositionCtl.Delete)
 
 	}
 }

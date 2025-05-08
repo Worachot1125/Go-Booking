@@ -10,11 +10,11 @@ import (
 func Permission(router *gin.RouterGroup) {
 	// Get the *bun.DB instance from config
 	ctl := controller.New() // Pass the *bun.DB to the controller
+	md := middleware.AuthMiddleware()
 	permission := router.Group("")
-	permission.Use(middleware.AuthMiddleware())
 	{
-		permission.POST("/create", ctl.PermissionCtl.Create)
-		permission.PATCH("/update/:id", ctl.PermissionCtl.Update)
-		permission.DELETE("/delete/:id", ctl.PermissionCtl.Delete)
+		permission.POST("/create", md, ctl.PermissionCtl.Create)
+		permission.PATCH("/:id", md, ctl.PermissionCtl.Update)
+		permission.DELETE("/:id", md, ctl.PermissionCtl.Delete)
 	}
 }

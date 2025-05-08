@@ -16,8 +16,8 @@ func Building_Room(router *gin.RouterGroup) {
 	{
 		building_room.GET("/list", ctl.Building_RoomCtl.List)
 		building_room.GET("/:id", ctl.Building_RoomCtl.Get)
-		building_room.GET("/room/:id", md, ctl.Building_RoomCtl.GetByIDroom)
-		building_room.GET("/buildRoom/:id", md, ctl.Building_RoomCtl.GetRoomsByBuildingID)
+		building_room.GET("/room/:id", ctl.Building_RoomCtl.GetByIDroom)
+		building_room.GET("/buildRoom/:id", ctl.Building_RoomCtl.GetRoomsByBuildingID)
 		building_room.POST("/create", md, ctl.Building_RoomCtl.Create)
 		building_room.PATCH("/:id", md, ctl.Building_RoomCtl.Update)
 		building_room.DELETE("/:id", md, ctl.Building_RoomCtl.Delete)

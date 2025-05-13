@@ -28,7 +28,7 @@ func HttpCmd() *cobra.Command {
 					if err != nil {
 						fmt.Printf("Auto-delete error: %v\n", err)
 					}
-					time.Sleep(5 * time.Minute)
+					time.Sleep(1 * time.Minute)
 				}
 			}()
 

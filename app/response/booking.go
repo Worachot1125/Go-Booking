@@ -31,4 +31,5 @@ type BookingbyUser struct {
 	Status       string `json:"status" bun:"status"`
 	CreatedAt    int64  `json:"created_at" bun:"created_at"`
 	UpdatedAt    int64  `json:"updated_at" bun:"updated_at"`
+	DeletedAt    string  `json:"deleted_at" bun:"deleted_at"`
 }

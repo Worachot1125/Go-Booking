@@ -335,10 +335,11 @@ func (s *Service) GetBookingByUserID(ctx context.Context, id request.GetByIdUser
 		ColumnExpr("b.start_time as start_time").
 		ColumnExpr("b.end_time as end_time").
 		ColumnExpr("b.status as status").
+		ColumnExpr("b.created_at as created_at").
 		ColumnExpr("b.updated_at as updated_at").
+		ColumnExpr("b.deleted_at as deleted_at").
 		Join("JOIN users as u ON b.user_id::uuid = u.id").
 		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
-		Where("b.deleted_at IS NULL").
 		Where("b.user_id = ?", id.ID).
 		OrderExpr("b.created_at ASC").
 		Scan(ctx, &bookings)
@@ -386,7 +387,6 @@ func (s *Service) Delete(ctx context.Context, id request.GetByIdBooking) error {
 func NewBookingService(db *bun.DB) *BookingService {
 	return &BookingService{db: db}
 }
-
 
 func (s *BookingService) AutoDeleteExpiredBookings() error {
 	now := time.Now()

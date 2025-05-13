@@ -2,14 +2,14 @@ package cmd
 
 import (
 	"app/app/routes"
-	"app/config"
-	"fmt"
-	"time"
+	// "app/config"
+	// "fmt"
+	// "time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 
-	bookingService "app/app/controller/booking"
+	// bookingService "app/app/controller/booking"
 )
 
 func HttpCmd() *cobra.Command {
@@ -18,19 +18,19 @@ func HttpCmd() *cobra.Command {
 		Short: "Run server on HTTP protocol",
 		Run: func(cmd *cobra.Command, args []string) {
 
-			config.Database()
-			db := config.GetDB()
-			bookingSvc := bookingService.NewBookingService(db)
+			// config.Database()
+			// db := config.GetDB()
+			// bookingSvc := bookingService.NewBookingService(db)
 
-			go func() {
-				for {
-					err := bookingSvc.AutoDeleteExpiredBookings()
-					if err != nil {
-						fmt.Printf("Auto-delete error: %v\n", err)
-					}
-					time.Sleep(1 * time.Minute)
-				}
-			}()
+			// go func() {
+			// 	for {
+			// 		err := bookingSvc.AutoExpiredBookings()
+			// 		if err != nil {
+			// 			fmt.Printf("Auto-status error: %v\n", err)
+			// 		}
+			// 		time.Sleep(1 * time.Minute)
+			// 	}
+			// }()
 
 			r := gin.New()
 

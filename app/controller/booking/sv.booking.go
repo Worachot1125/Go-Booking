@@ -18,24 +18,17 @@ type BookingService struct {
 	db *bun.DB
 }
 
-func parseTime(timeStr string) time.Time {
-	parsedTime, err := time.Parse(time.RFC3339, timeStr)
-	if err != nil {
-		panic("invalid time format, expected RFC3339")
-	}
-	return parsedTime
-}
-
 func (s *Service) Create(ctx context.Context, req request.CreateBooking) (*model.Booking, bool, error) {
-	startTime := parseTime(req.StartTime)
-	endTime := parseTime(req.EndTime)
+
+	startUnix := req.StartTime
+	endUnix := req.EndTime
 
 	// Check overlap ก่อน
 	exists, err := s.db.NewSelect().
 		Model((*model.Booking)(nil)).
 		Where("room_id = ?", req.RoomID).
-		Where("start_time < ?", endTime).
-		Where("end_time > ?", startTime).
+		Where("start_time < ?", startUnix).
+		Where("end_time > ?", endUnix).
 		Where("deleted_at IS NULL").
 		Exists(ctx)
 	if err != nil {
@@ -52,8 +45,9 @@ func (s *Service) Create(ctx context.Context, req request.CreateBooking) (*model
 		Title:       req.Title,
 		Description: req.Description,
 		Phone:       req.Phone,
-		StartTime:   startTime,
-		EndTime:     endTime,
+		StartTime:   startUnix,
+		EndTime:     endUnix,
+		ApprovedBy:  "",
 		Status:      enum.BookingStatus("Pending"),
 	}
 
@@ -93,17 +87,22 @@ func (s *Service) Update(ctx context.Context, req request.UpdateBooking, id requ
 		m.Title = req.Title
 		q.Set("title = ?title")
 	}
-	if req.StartTime != "" {
-		m.StartTime = parseTime(req.StartTime)
+	if req.StartTime > 0 {
+		m.StartTime = req.StartTime
 		q.Set("start_time = ?start_time")
 	}
-	if req.EndTime != "" {
-		m.EndTime = parseTime(req.EndTime)
+
+	if req.EndTime > 0 {
+		m.EndTime = req.EndTime
 		q.Set("end_time = ?end_time")
 	}
 	if req.Status != "" {
 		m.Status = enum.BookingStatus(req.Status)
 		q.Set("status = ?status")
+	}
+	if req.ApprovedBy != "" {
+		m.ApprovedBy = req.ApprovedBy
+		q.Set("approved_by = ?approved_by")
 	}
 
 	m.SetUpdateNow()
@@ -118,6 +117,42 @@ func (s *Service) Update(ctx context.Context, req request.UpdateBooking, id requ
 	}
 
 	return m, false, nil
+}
+
+func (s *Service) ApproveBooking(ctx context.Context, bookingID, adminUserID string) (*model.Booking, error) {
+	m := &model.Booking{ID: bookingID}
+
+	// เช็คว่า booking มีจริงก่อน
+	exists, err := s.db.NewSelect().
+		Model(m).
+		WherePK().
+		Exists(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.New("booking not found")
+	}
+
+	// อัปเดต ApprovedBy และ Status
+	m.ApprovedBy = adminUserID
+	m.Status = enum.BookingStatus("Approved")
+	m.SetUpdateNow()
+
+	_, err = s.db.NewUpdate().
+		Model(m).
+		WherePK().
+		Set("approved_by = ?", m.ApprovedBy).
+		Set("status = ?", m.Status).
+		Set("updated_at = ?", m.UpdatedAt).
+		Returning("*").
+		Exec(ctx)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
 }
 
 func (s *Service) List(ctx context.Context, req request.ListBooking) ([]response.BookingResponse, int, error) {
@@ -138,6 +173,7 @@ func (s *Service) List(ctx context.Context, req request.ListBooking) ([]response
 		ColumnExpr("b.start_time as start_time").
 		ColumnExpr("b.end_time as end_time").
 		ColumnExpr("b.status as status").
+		ColumnExpr("b.approved_by as approved_by").
 		ColumnExpr("b.created_at as created_at").
 		ColumnExpr("b.updated_at as updated_at").
 		Join("JOIN users as u ON b.user_id::uuid = u.id").
@@ -205,6 +241,7 @@ func (s *Service) ListHistory(ctx context.Context, req request.ListBooking) ([]r
 		ColumnExpr("b.start_time as start_time").
 		ColumnExpr("b.end_time as end_time").
 		ColumnExpr("b.status as status").
+		ColumnExpr("b.approved_by as approved_by").
 		ColumnExpr("b.created_at as created_at").
 		ColumnExpr("b.updated_at as updated_at").
 		Join("JOIN users as u ON b.user_id::uuid = u.id").
@@ -270,6 +307,7 @@ func (s *Service) Get(ctx context.Context, id request.GetByIdBooking) (*response
 		ColumnExpr("b.start_time as start_time").
 		ColumnExpr("b.end_time as end_time").
 		ColumnExpr("b.status as status").
+		ColumnExpr("b.approved_by as approved_by").
 		ColumnExpr("b.updated_at as updated_at").
 		Join("JOIN users as u ON b.user_id::uuid = u.id").
 		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
@@ -298,6 +336,7 @@ func (s *Service) GetByRoomId(ctx context.Context, req request.GetByRoomIdBookin
 		ColumnExpr("b.start_time as start_time").
 		ColumnExpr("b.end_time as end_time").
 		ColumnExpr("b.status as status").
+		ColumnExpr("b.approved_by as approved_by").
 		ColumnExpr("b.created_at as created_at").
 		ColumnExpr("b.updated_at as updated_at").
 		Join("JOIN users as u ON b.user_id::uuid = u.id").
@@ -335,6 +374,7 @@ func (s *Service) GetBookingByUserID(ctx context.Context, id request.GetByIdUser
 		ColumnExpr("b.start_time as start_time").
 		ColumnExpr("b.end_time as end_time").
 		ColumnExpr("b.status as status").
+		ColumnExpr("b.approved_by as approved_by").
 		ColumnExpr("b.created_at as created_at").
 		ColumnExpr("b.updated_at as updated_at").
 		ColumnExpr("b.deleted_at as deleted_at").
@@ -362,6 +402,7 @@ func (s *Service) GetBookingHistoryByUserID(ctx context.Context, id request.GetB
 		ColumnExpr("b.start_time as start_time").
 		ColumnExpr("b.end_time as end_time").
 		ColumnExpr("b.status as status").
+		ColumnExpr("b.approved_by as approved_by").
 		ColumnExpr("b.updated_at as updated_at").
 		Join("JOIN users as u ON b.user_id::uuid = u.id").
 		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
@@ -388,13 +429,15 @@ func NewBookingService(db *bun.DB) *BookingService {
 	return &BookingService{db: db}
 }
 
-func (s *BookingService) AutoDeleteExpiredBookings() error {
-	now := time.Now()
+func (s *BookingService) AutoExpiredBookings() error {
+	now := time.Now().Unix()
 
 	_, err := s.db.NewUpdate().
 		Model((*model.Booking)(nil)).
-		Set("deleted_at = NOW()").
+		Set("status = ?", enum.BookingFinished).
+		Set("updated_at = ?", now).
 		Where("end_time < ?", now).
+		Where("status = ?", enum.BookingApproved).
 		Where("deleted_at IS NULL").
 		Exec(context.Background())
 

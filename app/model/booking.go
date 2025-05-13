@@ -2,7 +2,6 @@ package model
 
 import (
 	"app/app/enum"
-	"time"
 
 	"github.com/uptrace/bun"
 )
@@ -18,11 +17,12 @@ type Booking struct {
 	Title       string             `bun:"title,notnull"`
 	Description string             `bun:"description,notnull"`
 	Phone       string             `bun:"phone,notnull"`
-	StartTime   time.Time          `bun:"start_time,notnull"`
-	EndTime     time.Time          `bun:"end_time,notnull"`
+	StartTime   int64              `bun:"start_time,notnull"`
+	EndTime     int64              `bun:"end_time,notnull"`
+	approvedBy  *User              `bun:"rel:belongs-to,join:user_id=id"`
+	ApprovedBy  string             `bun:"approved_by"`
 	Status      enum.BookingStatus `bun:"status,notnull"`
 
 	CreateUpdateUnixTimestamp
 	SoftDelete
 }
-

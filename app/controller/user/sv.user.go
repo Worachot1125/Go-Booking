@@ -184,8 +184,21 @@ func (s *Service) Get(ctx context.Context, id request.GetByIdUser) (*response.Li
 
 	err := s.db.NewSelect().
 		TableExpr("users as u").
-		Column("u.id", "u.first_name", "u.last_name", "u.email", "u.position_id", "u.image_url", "u.phone", "u.created_at", "u.updated_at").
-		Where("id = ?", id.ID).Where("deleted_at IS NULL").Scan(ctx, &m)
+		Join("LEFT JOIN positions as p ON p.id = u.position_id::uuid AND p.deleted_at IS NULL").
+		ColumnExpr("u.id").
+		ColumnExpr("u.first_name").
+		ColumnExpr("u.last_name").
+		ColumnExpr("u.email").
+		ColumnExpr("u.position_id").
+		ColumnExpr("p.name AS position_name").
+		ColumnExpr("u.image_url").
+		ColumnExpr("u.phone").
+		ColumnExpr("u.created_at").
+		ColumnExpr("u.updated_at").
+		Where("u.id = ?", id.ID).
+		Where("u.deleted_at IS NULL").
+		Scan(ctx, &m)
+
 	return &m, err
 }
 

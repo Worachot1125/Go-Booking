@@ -28,7 +28,7 @@ func HttpCmd() *cobra.Command {
 					if err != nil {
 						fmt.Printf("Auto-status error: %v\n", err)
 					}
-					time.Sleep(5 * time.Hour)
+					time.Sleep(1 * time.Minute)
 				}
 			}()
 

@@ -57,37 +57,6 @@ func (ctl *Controller) Update(ctx *gin.Context) {
 	response.Success(ctx, nil)
 }
 
-func (ctl *Controller) ApproveBooking(ctx *gin.Context) {
-	// รับ param จาก URI
-	ID := request.GetByIdBooking{}
-	if err := ctx.BindUri(&ID); err != nil {
-		logger.Err(err.Error())
-		response.BadRequest(ctx, err.Error())
-		return
-	}
-
-	// รับ admin_user_id จาก body
-	var body struct {
-		AdminUserID string `json:"admin_user_id"`
-	}
-	if err := ctx.Bind(&body); err != nil {
-		logger.Err(err.Error())
-		response.BadRequest(ctx, err.Error())
-		return
-	}
-
-	// เรียก service เพื่อ approve
-	result, err := ctl.Service.ApproveBooking(ctx, ID.ID, body.AdminUserID)
-	if err != nil {
-		logger.Err(err.Error())
-		response.InternalError(ctx, err.Error())
-		return
-	}
-
-	// ส่ง response สำเร็จ
-	response.Success(ctx, result)
-}
-
 
 func (ctl *Controller) List(ctx *gin.Context) {
 	req := request.ListBooking{}

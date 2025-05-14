@@ -20,7 +20,6 @@ func Booking(router *gin.RouterGroup) {
 		booking.GET("/history/:id", md, ctl.BookingCtl.GetBookingHistoryByUserID)
 		booking.POST("/create", md, ctl.BookingCtl.Create)
 		booking.PATCH("/:id", md, ctl.BookingCtl.Update)
-		booking.PATCH("/approve/:id", md, ctl.BookingCtl.ApproveBooking)
 		booking.GET("/room/:id", ctl.BookingCtl.GetByRoomId)
 		booking.DELETE("/:id", md, ctl.BookingCtl.Delete)
 	}

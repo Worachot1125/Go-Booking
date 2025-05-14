@@ -23,7 +23,6 @@ func (s *Service) Create(ctx context.Context, req request.CreateBooking) (*model
 	startUnix := req.StartTime
 	endUnix := req.EndTime
 
-	// Check overlap ก่อน
 	exists, err := s.db.NewSelect().
 		Model((*model.Booking)(nil)).
 		Where("room_id = ?", req.RoomID).
@@ -60,6 +59,7 @@ func (s *Service) Create(ctx context.Context, req request.CreateBooking) (*model
 }
 
 func (s *Service) Update(ctx context.Context, req request.UpdateBooking, id request.GetByIdBooking) (*model.Booking, bool, error) {
+	// ตรวจสอบว่า booking มีอยู่ไหม
 	ex, err := s.db.NewSelect().Table("bookings").Where("id = ?", id.ID).Exists(ctx)
 	if err != nil {
 		return nil, false, err
@@ -68,9 +68,11 @@ func (s *Service) Update(ctx context.Context, req request.UpdateBooking, id requ
 		return nil, false, errors.New("booking not found")
 	}
 
+	// เตรียม model
 	m := &model.Booking{ID: id.ID}
 	q := s.db.NewUpdate().Model(m).WherePK().OmitZero().Returning("*")
 
+	// อัปเดตฟิลด์ทั่วไป
 	if req.RoomID != "" {
 		m.RoomID = req.RoomID
 		q.Set("room_id = ?room_id")
@@ -91,20 +93,26 @@ func (s *Service) Update(ctx context.Context, req request.UpdateBooking, id requ
 		m.StartTime = req.StartTime
 		q.Set("start_time = ?start_time")
 	}
-
 	if req.EndTime > 0 {
 		m.EndTime = req.EndTime
 		q.Set("end_time = ?end_time")
 	}
+
 	if req.Status != "" {
 		m.Status = enum.BookingStatus(req.Status)
 		q.Set("status = ?status")
-	}
-	if req.ApprovedBy != "" {
-		m.ApprovedBy = req.ApprovedBy
-		q.Set("approved_by = ?approved_by")
+
+		if req.Status == string(enum.BookingApproved) || req.Status == string(enum.BookingCanceled) {
+			userID, ok := ctx.Value("user_id").(string)
+			if !ok || userID == "" {
+				return nil, false, errors.New("unauthorized: user_id not found")
+			}
+			m.ApprovedBy = userID
+			q.Set("approved_by = ?approved_by")
+		}
 	}
 
+	// อัปเดตเวลาล่าสุด
 	m.SetUpdateNow()
 	q.Set("updated_at = ?updated_at")
 
@@ -117,42 +125,6 @@ func (s *Service) Update(ctx context.Context, req request.UpdateBooking, id requ
 	}
 
 	return m, false, nil
-}
-
-func (s *Service) ApproveBooking(ctx context.Context, bookingID, adminUserID string) (*model.Booking, error) {
-	m := &model.Booking{ID: bookingID}
-
-	// เช็คว่า booking มีจริงก่อน
-	exists, err := s.db.NewSelect().
-		Model(m).
-		WherePK().
-		Exists(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.New("booking not found")
-	}
-
-	// อัปเดต ApprovedBy และ Status
-	m.ApprovedBy = adminUserID
-	m.Status = enum.BookingStatus("Approved")
-	m.SetUpdateNow()
-
-	_, err = s.db.NewUpdate().
-		Model(m).
-		WherePK().
-		Set("approved_by = ?", m.ApprovedBy).
-		Set("status = ?", m.Status).
-		Set("updated_at = ?", m.UpdatedAt).
-		Returning("*").
-		Exec(ctx)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return m, nil
 }
 
 func (s *Service) List(ctx context.Context, req request.ListBooking) ([]response.BookingResponse, int, error) {

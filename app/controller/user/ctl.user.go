@@ -153,8 +153,8 @@ func (ctl *Controller) List(ctx *gin.Context) {
 	if req.Page == 0 {
 		req.Page = 1
 	}
-	if req.Page == 0 {
-		req.Page = 10
+	if req.Size == 0 {
+		req.Size = 10
 	}
 
 	if req.OrderBy == "" {

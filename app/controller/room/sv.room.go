@@ -38,41 +38,51 @@ func (s *Service) Create(ctx context.Context, req request.CreateRoom) (*model.Ro
 }
 
 func (s *Service) Update(ctx context.Context, req request.UpdateRoom, id request.GetByIdRoom) (*model.Room, bool, error) {
+	// ตรวจสอบว่ามีห้องนี้ไหม
 	ex, err := s.db.NewSelect().Table("rooms").Where("id = ?", id.ID).Exists(ctx)
 	if err != nil {
 		return nil, false, err
 	}
 	if !ex {
-		return nil, false, err
+		return nil, false, errors.New("room not found")
 	}
 
-	m := &model.Room{
-		ID:          id.ID,
-		Name:        req.Name,
-		Description: req.Description,
-		Capacity:    req.Capacity,
-		Image_url:   req.Image_url,
+	// เตรียม model สำหรับอัปเดต
+	m := &model.Room{ID: id.ID}
+	q := s.db.NewUpdate().Model(m).WherePK().OmitZero().Returning("*")
+
+	// อัปเดตเฉพาะ field ที่ส่งมา
+	if req.Name != "" {
+		m.Name = req.Name
+		q.Set("name = ?name")
+	}
+	if req.Description != "" {
+		m.Description = req.Description
+		q.Set("description = ?description")
+	}
+	if req.Capacity != 0 {
+		m.Capacity = req.Capacity
+		q.Set("capacity = ?capacity")
+	}
+	if req.Image_url != "" {
+		m.Image_url = req.Image_url
+		q.Set("image_url = ?image_url")
 	}
 
+	// อัปเดตเวลา
 	m.SetUpdateNow()
+	q.Set("updated_at = ?updated_at")
 
-	_, err = s.db.NewUpdate().Model(m).
-		Set("name = ?name").
-		Set("description = ?description").
-		Set("capacity = ?capacity").
-		Set("image_url = ?image_url").
-		Set("updated_at = ?updated_at").
-		WherePK().
-		OmitZero().
-		Returning("*").
-		Exec(ctx)
+	// รัน query
+	_, err = q.Exec(ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {
 			return nil, true, errors.New("room already exists")
 		}
+		return nil, false, err
 	}
 
-	return m, false, err
+	return m, false, nil
 }
 
 func (s *Service) List(ctx context.Context, req request.ListRoom) ([]response.RooomResponse, int, error) {
@@ -86,8 +96,11 @@ func (s *Service) List(ctx context.Context, req request.ListRoom) ([]response.Ro
 		ColumnExpr("r.description AS description").
 		ColumnExpr("r.capacity AS capacity").
 		ColumnExpr("r.image_url AS image_url").
+		ColumnExpr("b.name AS building").
 		ColumnExpr("r.created_at AS created_at").
 		ColumnExpr("r.updated_at AS updated_at").
+		Join("JOIN building_rooms as br ON r.id::uuid = br.room_id::uuid ").
+		Join("JOIN buildings as b ON br.building_id::uuid = b.id::uuid ").
 		Where("r.deleted_at IS NULL").
 		OrderExpr("r.name ASC")
 
@@ -137,8 +150,11 @@ func (s *Service) Get(ctx context.Context, id request.GetByIdRoom) (*response.Ro
 		ColumnExpr("r.description AS description").
 		ColumnExpr("r.capacity AS capacity").
 		ColumnExpr("r.image_url AS image_url").
+		ColumnExpr("b.name AS building").
 		ColumnExpr("r.created_at AS created_at").
 		ColumnExpr("r.updated_at AS updated_at").
+		Join("JOIN building_rooms as br ON r.id::uuid = br.room_id::uuid ").
+		Join("JOIN buildings as b ON br.building_id::uuid = b.id::uuid ").
 		Where("r.deleted_at IS NULL").
 		Where("r.id = ?", id.ID).
 		Scan(ctx, &m)

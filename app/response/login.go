@@ -12,6 +12,7 @@ type LoginResponse struct {
 	Position_ID string `bun:"position_id" json:"position_id"`
 	Image_url   string `bun:"image_url" json:"image_url"`
 	Phone       string `bun:"phone" json:"phone"`
+	RoleName    string `bun:"role_name" json:"role_name"`
 	CreatedAt   int64  `bun:"created_at" json:"created_at"`
 	UpdatedAt   int64  `bun:"updated_at" json:"updated_at"`
 }

@@ -152,8 +152,8 @@ func (s *Service) GetByIDroom(ctx context.Context, id request.GetByIdRoom) (*res
 		ColumnExpr("r.updated_at").
 		ColumnExpr("b.id AS building_id").
 		ColumnExpr("b.name AS building_name").
-		Join("JOIN building_rooms AS br ON br.room_id::uuid = r.id").
-		Join("JOIN buildings AS b ON b.id = br.building_id::uuid").
+		Join("JOIN building_rooms AS br ON br.room_id::uuid = r.id::uuid").
+		Join("JOIN buildings AS b ON b.id::uuid = br.building_id::uuid").
 		Where("r.id = ?", id.ID).
 		Where("r.deleted_at IS NULL").
 		Where("b.deleted_at IS NULL").

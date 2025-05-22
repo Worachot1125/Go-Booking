@@ -23,6 +23,7 @@ type ListBooking struct {
 	OrderBy  string `form:"order_by"`
 	Search   string `form:"search"`
 	SearchBy string `form:"search_by"`
+	Status   string `form:"status"`
 	RoomID   string `form:"room_id"`
 }
 
@@ -38,5 +39,6 @@ type GetByRoomIdBooking struct {
 	OrderBy  string `form:"order_by"`
 	Search   string `form:"search"`
 	SearchBy string `form:"search_by"`
+	Status   string `form:"status"`
 	RoomID   string `form:"room_id"`
 }

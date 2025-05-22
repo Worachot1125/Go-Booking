@@ -13,11 +13,11 @@ type User struct {
 	LastName    string `bun:"last_name,notnull"`
 	Email       string `bun:"email,unique,notnull"`
 	Password    string `bun:"password,notnull"`
-	Position_ID string `bun:"position_id"` // Foreign key to the Position table
+	Position_ID string `bun:"position_id"`
 	Image_url   string `bun:"image_url"`
 	Phone       string `bun:"phone"`
 
-	Position *Position `bun:"rel:belongs-to,join:position_id=id"`
+	Position   *Position   `bun:"rel:belongs-to,join:position_id=id"`
 	CreateUpdateUnixTimestamp
 	SoftDelete
 }

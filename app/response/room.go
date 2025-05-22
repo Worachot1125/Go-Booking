@@ -6,6 +6,7 @@ type RooomResponse struct {
 	Description string `bun:"description" json:"description"`
 	Capacity    int64  `bun:"capacity" json:"capacity"`
 	Image_url   string `bun:"image_url" json:"image_url"`
+	Building    string `bun:"building" json:"building"`
 	CreatedAt   string `bun:"created_at" json:"created_at"`
 	UpdatedAt   string `bun:"updated_at" json:"updated_at"`
 }

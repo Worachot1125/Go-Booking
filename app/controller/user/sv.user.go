@@ -146,32 +146,64 @@ func (s *Service) List(ctx context.Context, req request.ListUser) ([]response.Li
 	offset := (req.Page - 1) * req.Size
 	m := []response.ListUser{}
 
-	query := s.db.NewSelect().
+	// Base query
+	baseQuery := s.db.NewSelect().
 		TableExpr("users as u").
-		Column("u.id", "u.first_name", "u.last_name", "u.email", "u.position_id", "u.image_url", "u.phone", "u.created_at", "u.updated_at").Where("deleted_at IS NULL")
+		ColumnExpr("u.id").
+		ColumnExpr("u.first_name").
+		ColumnExpr("u.last_name").
+		ColumnExpr("u.email").
+		ColumnExpr("u.position_id").
+		ColumnExpr("p.name AS position_name").
+		ColumnExpr("r.name AS role_name").
+		ColumnExpr("u.image_url").
+		ColumnExpr("u.phone").
+		ColumnExpr("u.created_at").
+		ColumnExpr("u.updated_at").
+		Join("LEFT JOIN positions AS p ON u.position_id::uuid = p.id::uuid").
+		Join("LEFT JOIN user_roles AS ur ON u.id::uuid = ur.user_id::uuid").
+		Join("LEFT JOIN roles AS r ON ur.role_id::uuid = r.id::uuid").
+		Where("u.deleted_at IS NULL").
+		OrderExpr("u.created_at ASC")
 
 	// Filtering
 	if req.Search != "" {
 		search := "%" + strings.ToLower(req.Search) + "%"
 		if req.SearchBy != "" {
 			searchBy := strings.ToLower(req.SearchBy)
-			query = query.Where(fmt.Sprintf("LOWER(u.%s) LIKE ?", searchBy), search)
+			baseQuery = baseQuery.Where(fmt.Sprintf("LOWER(u.%s) LIKE ?", searchBy), search)
 		} else {
-			query = query.Where("LOWER(u.first_name) LIKE ?", search)
+			baseQuery = baseQuery.Where("LOWER(u.first_name) LIKE ?", search)
 		}
 	}
 
-	// Count total before pagination
-	count, err := query.Count(ctx)
+	// Count query
+	countQuery := s.db.NewSelect().
+		TableExpr("users as u").
+		ColumnExpr("COUNT(*)").
+		Join("LEFT JOIN positions AS p ON u.position_id::uuid = p.id::uuid").
+		Join("LEFT JOIN user_roles AS ur ON u.id::uuid = ur.user_id::uuid").
+		Join("LEFT JOIN roles AS r ON ur.role_id::uuid = r.id::uuid").
+		Where("u.deleted_at IS NULL")
+
+	if req.Search != "" {
+		search := "%" + strings.ToLower(req.Search) + "%"
+		if req.SearchBy != "" {
+			searchBy := strings.ToLower(req.SearchBy)
+			countQuery = countQuery.Where(fmt.Sprintf("LOWER(u.%s) LIKE ?", searchBy), search)
+		} else {
+			countQuery = countQuery.Where("LOWER(u.first_name) LIKE ?", search)
+		}
+	}
+
+	var count int
+	err := countQuery.Scan(ctx, &count)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// Order handling
 	order := fmt.Sprintf("u.%s %s", req.SortBy, req.OrderBy)
-
-	// Final query with order + pagination
-	err = query.Order(order).Limit(req.Size).Offset(offset).Scan(ctx, &m)
+	err = baseQuery.Order(order).Limit(req.Size).Offset(offset).Scan(ctx, &m)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -179,24 +211,29 @@ func (s *Service) List(ctx context.Context, req request.ListUser) ([]response.Li
 	return m, count, nil
 }
 
+
 func (s *Service) Get(ctx context.Context, id request.GetByIdUser) (*response.ListUser, error) {
 	m := response.ListUser{}
 
 	err := s.db.NewSelect().
 		TableExpr("users as u").
-		Join("LEFT JOIN positions as p ON p.id = u.position_id::uuid AND p.deleted_at IS NULL").
 		ColumnExpr("u.id").
 		ColumnExpr("u.first_name").
 		ColumnExpr("u.last_name").
 		ColumnExpr("u.email").
 		ColumnExpr("u.position_id").
 		ColumnExpr("p.name AS position_name").
+		ColumnExpr("r.name AS role_name").
 		ColumnExpr("u.image_url").
 		ColumnExpr("u.phone").
 		ColumnExpr("u.created_at").
 		ColumnExpr("u.updated_at").
+		Join("LEFT JOIN positions AS p ON u.position_id::uuid = p.id::uuid").
+		Join("LEFT JOIN user_roles AS ur ON u.id::uuid = ur.user_id::uuid").
+		Join("LEFT JOIN roles AS r ON ur.role_id::uuid = r.id::uuid").
 		Where("u.id = ?", id.ID).
 		Where("u.deleted_at IS NULL").
+		OrderExpr("u.created_at ASC").
 		Scan(ctx, &m)
 
 	return &m, err

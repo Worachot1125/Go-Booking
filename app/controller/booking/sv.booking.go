@@ -128,9 +128,9 @@ func (s *Service) Update(ctx context.Context, req request.UpdateBooking, id requ
 }
 
 func (s *Service) List(ctx context.Context, req request.ListBooking) ([]response.BookingResponse, int, error) {
+	
 	offset := (req.Page - 1) * req.Size
 	m := []response.BookingResponse{}
-
 	baseQuery := s.db.NewSelect().
 		TableExpr("bookings as b").
 		ColumnExpr("b.id as id").
@@ -146,10 +146,12 @@ func (s *Service) List(ctx context.Context, req request.ListBooking) ([]response
 		ColumnExpr("b.end_time as end_time").
 		ColumnExpr("b.status as status").
 		ColumnExpr("b.approved_by as approved_by").
+		ColumnExpr("COALESCE(au.first_name || ' ' || au.last_name, '') as nameapproved_by").
 		ColumnExpr("b.created_at as created_at").
 		ColumnExpr("b.updated_at as updated_at").
 		Join("JOIN users as u ON b.user_id::uuid = u.id").
 		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
+		Join("LEFT JOIN users as au ON CAST(NULLIF(b.approved_by, '') AS uuid) = au.id").
 		Where("b.deleted_at IS NULL").
 		OrderExpr("b.created_at ASC")
 
@@ -214,10 +216,13 @@ func (s *Service) ListHistory(ctx context.Context, req request.ListBooking) ([]r
 		ColumnExpr("b.end_time as end_time").
 		ColumnExpr("b.status as status").
 		ColumnExpr("b.approved_by as approved_by").
+		ColumnExpr("COALESCE(au.first_name || ' ' || au.last_name, '') as nameapproved_by").
 		ColumnExpr("b.created_at as created_at").
 		ColumnExpr("b.updated_at as updated_at").
 		Join("JOIN users as u ON b.user_id::uuid = u.id").
 		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
+		Join("LEFT JOIN users as au ON CAST(NULLIF(b.approved_by, '') AS uuid) = au.id").
+		Where("b.deleted_at IS NULL").
 		OrderExpr("b.created_at ASC")
 
 	if req.Search != "" {
@@ -280,9 +285,11 @@ func (s *Service) Get(ctx context.Context, id request.GetByIdBooking) (*response
 		ColumnExpr("b.end_time as end_time").
 		ColumnExpr("b.status as status").
 		ColumnExpr("b.approved_by as approved_by").
+		ColumnExpr("COALESCE(au.first_name || ' ' || au.last_name, '') as nameapproved_by").
 		ColumnExpr("b.updated_at as updated_at").
 		Join("JOIN users as u ON b.user_id::uuid = u.id").
 		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
+		Join("LEFT JOIN users as au ON CAST(NULLIF(b.approved_by, '') AS uuid) = au.id").
 		Where("b.deleted_at IS NULL").
 		OrderExpr("b.created_at ASC").
 		Scan(ctx, &m)
@@ -309,10 +316,12 @@ func (s *Service) GetByRoomId(ctx context.Context, req request.GetByRoomIdBookin
 		ColumnExpr("b.end_time as end_time").
 		ColumnExpr("b.status as status").
 		ColumnExpr("b.approved_by as approved_by").
+		ColumnExpr("COALESCE(au.first_name || ' ' || au.last_name, '') as nameapproved_by").
 		ColumnExpr("b.created_at as created_at").
 		ColumnExpr("b.updated_at as updated_at").
 		Join("JOIN users as u ON b.user_id::uuid = u.id").
 		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
+		Join("LEFT JOIN users as au ON CAST(NULLIF(b.approved_by, '') AS uuid) = au.id").
 		Where("b.deleted_at IS NULL").
 		Where("r.id = ?", req.RoomID).
 		OrderExpr("start_time ASC")
@@ -347,12 +356,15 @@ func (s *Service) GetBookingByUserID(ctx context.Context, id request.GetByIdUser
 		ColumnExpr("b.end_time as end_time").
 		ColumnExpr("b.status as status").
 		ColumnExpr("b.approved_by as approved_by").
+		ColumnExpr("COALESCE(au.first_name || ' ' || au.last_name, '') as nameapproved_by").
 		ColumnExpr("b.created_at as created_at").
 		ColumnExpr("b.updated_at as updated_at").
 		ColumnExpr("b.deleted_at as deleted_at").
 		Join("JOIN users as u ON b.user_id::uuid = u.id").
 		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
+		Join("LEFT JOIN users as au ON CAST(NULLIF(b.approved_by, '') AS uuid) = au.id").
 		Where("b.user_id = ?", id.ID).
+		Where("b.deleted_at IS NULL").
 		OrderExpr("b.created_at ASC").
 		Scan(ctx, &bookings)
 	return bookings, err
@@ -375,10 +387,13 @@ func (s *Service) GetBookingHistoryByUserID(ctx context.Context, id request.GetB
 		ColumnExpr("b.end_time as end_time").
 		ColumnExpr("b.status as status").
 		ColumnExpr("b.approved_by as approved_by").
+		ColumnExpr("COALESCE(au.first_name || ' ' || au.last_name, '') as nameapproved_by").
 		ColumnExpr("b.updated_at as updated_at").
 		Join("JOIN users as u ON b.user_id::uuid = u.id").
 		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
+		Join("LEFT JOIN users as au ON CAST(NULLIF(b.approved_by, '') AS uuid) = au.id").
 		Where("b.user_id = ?", id.ID).
+		Where("b.deleted_at IS NULL").
 		OrderExpr("b.created_at ASC").
 		Scan(ctx, &bookings)
 	return bookings, err

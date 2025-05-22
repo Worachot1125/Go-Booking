@@ -33,8 +33,8 @@ func (s *Service) Update(ctx context.Context, req request.UpdateBuilding, id req
 	}
 
 	m := &model.Building{
-		ID:          id.ID,
-		Name:        req.Name,
+		ID:   id.ID,
+		Name: req.Name,
 	}
 
 	m.SetUpdateNow()
@@ -60,9 +60,25 @@ func (s *Service) List(ctx context.Context, req request.ListBuilding) ([]respons
 	m := []response.BuildingResponse{}
 
 	query := s.db.NewSelect().
-		TableExpr("buildings as b").
-		Column("b.id", "b.name", "b.created_at", "b.updated_at").
-		Where("deleted_at IS NULL").
+		TableExpr("buildings AS b").
+		ColumnExpr("b.id").
+		ColumnExpr("b.name").
+		ColumnExpr("b.created_at").
+		ColumnExpr("b.updated_at").
+		ColumnExpr(`COALESCE(
+						json_agg(
+							jsonb_build_object(
+								'id', r.id,
+								'name', r.name
+							) ORDER BY r.name
+						) FILTER (WHERE r.id IS NOT NULL),
+						'[]'
+					) AS rooms_name`).
+		Join("LEFT JOIN building_rooms AS br ON br.building_id::uuid = b.id::uuid").
+		Join("LEFT JOIN rooms AS r ON r.id::uuid = br.room_id::uuid").
+		Where("b.deleted_at IS NULL").
+		Where("r.deleted_at IS NULL").
+		GroupExpr("b.id, b.name, b.created_at, b.updated_at").
 		OrderExpr("b.name ASC")
 
 	// Filtering
@@ -77,16 +93,29 @@ func (s *Service) List(ctx context.Context, req request.ListBuilding) ([]respons
 	}
 
 	// Count total before pagination
-	count, err := query.Count(ctx)
-	if err != nil {
+	countQuery := s.db.NewSelect().
+		TableExpr("buildings AS b").
+		ColumnExpr("COUNT(*)").
+		Where("b.deleted_at IS NULL")
+
+	if req.Search != "" {
+		search := "%" + strings.ToLower(req.Search) + "%"
+		if req.SearchBy != "" {
+			searchBy := strings.ToLower(req.SearchBy)
+			countQuery = countQuery.Where(fmt.Sprintf("LOWER(b.%s) LIKE ?", searchBy), search)
+		} else {
+			countQuery = countQuery.Where("LOWER(b.name) LIKE ?", search)
+		}
+	}
+
+	var count int
+	if err := countQuery.Scan(ctx, &count); err != nil {
 		return nil, 0, err
 	}
 
-	// Order handling
+	// Sorting and Pagination
 	order := fmt.Sprintf("b.%s %s", req.SortBy, req.OrderBy)
-
-	// Final query with order + pagination
-	err = query.Order(order).Limit(req.Size).Offset(offset).Scan(ctx, &m)
+	err := query.Order(order).Limit(req.Size).Offset(offset).Scan(ctx, &m)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -94,25 +123,44 @@ func (s *Service) List(ctx context.Context, req request.ListBuilding) ([]respons
 	return m, count, nil
 }
 
-func (s *Service) Get(ctx context.Context, id request.GetByIdBuilding) (*response.BuildingResponse, error) {
-	m := response.BuildingResponse{}
+func (s *Service) Get(ctx context.Context, id request.GetByIdBuilding) ([]response.BuildingResponse, error) {
+	m := []response.BuildingResponse{}
 
 	err := s.db.NewSelect().
-		TableExpr("buildings as b").
-		Column("b.id", "b.name", "b.updated_at").Where("deleted_at IS NULL").
-		Where("id = ?", id.ID).Where("deleted_at IS NULL").Scan(ctx, &m)
-	return &m, err
+		TableExpr("buildings AS b").
+		ColumnExpr("b.id").
+		ColumnExpr("b.name").
+		ColumnExpr("b.created_at").
+		ColumnExpr("b.updated_at").
+		ColumnExpr(`COALESCE(
+						json_agg(
+							jsonb_build_object(
+								'id', r.id,
+								'name', r.name
+							) ORDER BY r.name
+						) FILTER (WHERE r.id IS NOT NULL),
+						'[]'
+					) AS rooms_name`).
+		Join("LEFT JOIN building_rooms AS br ON br.building_id::uuid = b.id::uuid").
+		Join("LEFT JOIN rooms AS r ON r.id::uuid = br.room_id::uuid").
+		Where("b.deleted_at IS NULL").
+		GroupExpr("b.id").
+		Where("r.deleted_at IS NULL").
+		OrderExpr("b.name ASC").
+		Where("b.id = ?", id.ID).
+		Scan(ctx, &m)
+	return m, err
 }
 
 func (s *Service) Delete(ctx context.Context, id request.GetByIdBuilding) error {
 	ex, err := s.db.NewSelect().Table("buildings").Where("id = ?", id.ID).Where("deleted_at IS NULL").Exists(ctx)
 	if err != nil {
-		return  err
+		return err
 	}
 	if !ex {
 		return errors.New("building not found")
 	}
 
-	_, err = s.db.NewDelete().Model((*model.Building)(nil)).Where("id = ?",id.ID).Exec(ctx)
+	_, err = s.db.NewDelete().Model((*model.Building)(nil)).Where("id = ?", id.ID).Exec(ctx)
 	return err
 }

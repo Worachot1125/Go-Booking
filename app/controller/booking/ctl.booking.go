@@ -57,7 +57,6 @@ func (ctl *Controller) Update(ctx *gin.Context) {
 	response.Success(ctx, nil)
 }
 
-
 func (ctl *Controller) List(ctx *gin.Context) {
 	req := request.ListBooking{}
 	if err := ctx.Bind(&req); err != nil {
@@ -69,8 +68,8 @@ func (ctl *Controller) List(ctx *gin.Context) {
 	if req.Page == 0 {
 		req.Page = 1
 	}
-	if req.Page == 0 {
-		req.Page = 10
+	if req.Size == 0 {
+		req.Size = 10
 	}
 
 	if req.OrderBy == "" {
@@ -102,8 +101,8 @@ func (ctl *Controller) ListHistory(ctx *gin.Context) {
 	if req.Page == 0 {
 		req.Page = 1
 	}
-	if req.Page == 0 {
-		req.Page = 10
+	if req.Size == 0 {
+		req.Size = 10
 	}
 
 	if req.OrderBy == "" {

@@ -83,7 +83,6 @@ func (ctl *Controller) Create(ctx *gin.Context) {
 }
 
 func (ctl *Controller) Update(ctx *gin.Context) {
-	// ดึง ID จาก path
 	ID := request.GetByIdRoom{}
 	if err := ctx.BindUri(&ID); err != nil {
 		logger.Err(err.Error())
@@ -91,28 +90,22 @@ func (ctl *Controller) Update(ctx *gin.Context) {
 		return
 	}
 
-	// อ่านค่าจาก multipart/form-data
 	name := ctx.PostForm("name")
 	description := ctx.PostForm("description")
 	capacityStr := ctx.PostForm("capacity")
 	existingImageURL := ctx.PostForm("existing_image_url")
 
-	if name == "" || description == "" || capacityStr == "" {
-		response.BadRequest(ctx, "ข้อมูลห้องไม่ครบ")
-		return
+	var capacity int64
+	if capacityStr != "" {
+		c, err := strconv.Atoi(capacityStr)
+		if err != nil {
+			response.BadRequest(ctx, "จำนวนคนต้องเป็นตัวเลข")
+			return
+		}
+		capacity = int64(c)
 	}
 
-	// แปลง string → int
-	capacity, err := strconv.Atoi(capacityStr)
-	if err != nil {
-		response.BadRequest(ctx, "จำนวนคนต้องเป็นตัวเลข")
-		return
-	}
-
-	// เตรียมค่า image_url (ใช้ค่าที่มีอยู่)
 	imageURL := existingImageURL
-
-	// ถ้ามีไฟล์รูปใหม่ → อัปโหลด Cloudinary
 	file, err := ctx.FormFile("image_url")
 	if err == nil {
 		src, err := file.Open()
@@ -124,21 +117,19 @@ func (ctl *Controller) Update(ctx *gin.Context) {
 		defer src.Close()
 
 		imageURL, err = helper.UploadImageToCloudinary(src)
-
 		if err != nil {
 			logger.Errf("Upload to Cloudinary failed: %v", err)
 			response.InternalError(ctx, "ไม่สามารถอัปโหลดรูปภาพได้")
 			return
 		}
-
 	}
 
-	// ส่งไป service
+	// เตรียม request แบบยืดหยุ่น
 	req := request.UpdateRoom{
 		CreateRoom: request.CreateRoom{
 			Name:        name,
 			Description: description,
-			Capacity:    int64(capacity),
+			Capacity:    capacity,     // จะเป็น 0 ถ้าไม่ได้กรอก
 			Image_url:   imageURL,
 		},
 	}
@@ -168,8 +159,8 @@ func (ctl *Controller) List(ctx *gin.Context) {
 	if req.Page == 0 {
 		req.Page = 1
 	}
-	if req.Page == 0 {
-		req.Page = 10
+	if req.Size == 0 {
+		req.Size = 10
 	}
 
 	if req.OrderBy == "" {

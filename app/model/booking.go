@@ -19,7 +19,6 @@ type Booking struct {
 	Phone       string             `bun:"phone,notnull"`
 	StartTime   int64              `bun:"start_time,notnull"`
 	EndTime     int64              `bun:"end_time,notnull"`
-	approvedBy  *User              `bun:"rel:belongs-to,join:user_id=id"`
 	ApprovedBy  string             `bun:"approved_by"`
 	Status      enum.BookingStatus `bun:"status,notnull"`
 

@@ -153,7 +153,7 @@ func (s *Service) List(ctx context.Context, req request.ListBooking) ([]response
 		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
 		Join("LEFT JOIN users as au ON CAST(NULLIF(b.approved_by, '') AS uuid) = au.id").
 		Where("b.deleted_at IS NULL").
-		OrderExpr("b.created_at ASC")
+		OrderExpr("b.created_at DESC")
 
 	if req.Search != "" {
 		search := "%" + strings.ToLower(req.Search) + "%"
@@ -365,7 +365,7 @@ func (s *Service) GetBookingByUserID(ctx context.Context, id request.GetByIdUser
 		Join("LEFT JOIN users as au ON CAST(NULLIF(b.approved_by, '') AS uuid) = au.id").
 		Where("b.user_id = ?", id.ID).
 		Where("b.deleted_at IS NULL").
-		OrderExpr("b.created_at ASC").
+		OrderExpr("b.created_at DESC").
 		Scan(ctx, &bookings)
 	return bookings, err
 }

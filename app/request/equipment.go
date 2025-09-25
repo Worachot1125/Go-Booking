@@ -1,7 +1,6 @@
 package request
 
 type CreateEquipment struct {
-	ID                 string `json:"id"`
 	Name               string `json:"name"`
 	Image_URL          string `json:"image_url"`
 	Quantity           int    `json:"quantity"`
@@ -10,7 +9,15 @@ type CreateEquipment struct {
 }
 
 type UpdateEquipment struct {
-	CreateEquipment
+    Name               *string `json:"name"`
+    Image_URL          *string `json:"image_url"`
+    Quantity           *int    `json:"quantity"`
+    Available_Quantity *int    `json:"available_quantity"`
+    Status             *string `json:"status"`
+}
+
+type GetByIdEquipment struct {
+	ID string `uri:"id" binding:"required"`
 }
 
 type ListEquipment struct {
@@ -21,8 +28,4 @@ type ListEquipment struct {
 	Search   string `form:"search"`
 	SearchBy string `form:"search_by"`
 	Status   string `form:"status"`
-}
-
-type GetByIdEquipment struct {
-	ID string `uri:"id" binding:"required"`
 }

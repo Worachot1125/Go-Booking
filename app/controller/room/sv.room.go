@@ -85,10 +85,19 @@ func (s *Service) Update(ctx context.Context, req request.UpdateRoom, id request
 	return m, false, nil
 }
 
-func (s *Service) List(ctx context.Context, req request.ListRoom) ([]response.RooomResponse, int, error) {
+func (s *Service) List(ctx context.Context, req request.ListRoom) ([]response.RooomResponse, map[string]int, error) {
+	// ตรวจสอบ Page / Size
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.Size <= 0 {
+		req.Size = 10
+	}
 	offset := (req.Page - 1) * req.Size
-	m := []response.RooomResponse{}
 
+	rooms := []response.RooomResponse{}
+
+	// Base query
 	query := s.db.NewSelect().
 		TableExpr("rooms as r").
 		ColumnExpr("r.id AS id").
@@ -99,46 +108,61 @@ func (s *Service) List(ctx context.Context, req request.ListRoom) ([]response.Ro
 		ColumnExpr("b.name AS building").
 		ColumnExpr("r.created_at AS created_at").
 		ColumnExpr("r.updated_at AS updated_at").
-		Join("JOIN building_rooms as br ON r.id::uuid = br.room_id::uuid ").
-		Join("JOIN buildings as b ON br.building_id::uuid = b.id::uuid ").
-		Where("r.deleted_at IS NULL").
-		OrderExpr("r.name ASC")
+		Join("LEFT JOIN building_rooms as br ON r.id::uuid = br.room_id::uuid").
+		Join("LEFT JOIN buildings as b ON br.building_id::uuid = b.id::uuid").
+		Where("r.deleted_at IS NULL")
 
+	// Search
 	if req.Search != "" {
 		searchBy := strings.ToLower(req.SearchBy)
-		search := req.Search
+		search := strings.ToLower(req.Search)
 
 		switch searchBy {
 		case "name", "description":
-			query = query.Where(fmt.Sprintf("LOWER(r.%s) LIKE ?", searchBy), "%"+strings.ToLower(search)+"%")
+			query = query.Where(fmt.Sprintf("LOWER(r.%s) LIKE ?", searchBy), "%"+search+"%")
 		case "capacity":
-			// แปลง string -> int
-			if capValue, err := strconv.Atoi(search); err == nil {
-				query = query.Where("r.capacity = ?", capValue)
+			if capVal, err := strconv.Atoi(search); err == nil {
+				query = query.Where("r.capacity = ?", capVal)
 			}
 		default:
-			// fallback ถ้าไม่กำหนดหรือไม่รองรับ
-			query = query.Where("LOWER(r.name) LIKE ?", "%"+strings.ToLower(search)+"%")
+			query = query.Where("LOWER(r.name) LIKE ?", "%"+search+"%")
 		}
 	}
 
-	// Count total before pagination
-	count, err := query.Count(ctx)
+	// Count total
+	count, err := query.Clone().Count(ctx)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
-	// Order handling
-	order := fmt.Sprintf("r.%s %s", req.SortBy, req.OrderBy)
+	// Sort
+	sortBy := "name"
+	if req.SortBy != "" {
+		sortBy = req.SortBy
+	}
+	orderBy := "ASC"
+	if strings.ToUpper(req.OrderBy) == "DESC" {
+		orderBy = "DESC"
+	}
+	query = query.Order(fmt.Sprintf("r.%s %s", sortBy, orderBy))
 
-	// Final query with order + pagination
-	err = query.Order(order).Limit(req.Size).Offset(offset).Scan(ctx, &m)
+	// Pagination
+	err = query.Limit(req.Size).Offset(offset).Scan(ctx, &rooms)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
-	return m, count, nil
+	// Pagination info
+	pagination := map[string]int{
+		"page":       req.Page,
+		"size":       req.Size,
+		"total":      count,
+		"total_page": (count + req.Size - 1) / req.Size,
+	}
+
+	return rooms, pagination, nil
 }
+
 
 func (s *Service) Get(ctx context.Context, id request.GetByIdRoom) (*response.RooomResponse, error) {
 	m := response.RooomResponse{}

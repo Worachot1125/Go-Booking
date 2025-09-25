@@ -4,6 +4,7 @@ import (
 	"app/app/controller/booking"
 	"app/app/controller/building"
 	"app/app/controller/building_room"
+	"app/app/controller/equipment"
 	"app/app/controller/login"
 	"app/app/controller/logout"
 	"app/app/controller/permission"
@@ -31,6 +32,7 @@ type Controller struct {
 	LoginCtl           *login.Controller
 	LogoutCtl          *logout.Controller
 	User_RoleCtl       *user_role.Controller
+	EquipmentCtl       *equipment.Controller
 }
 
 func New() *Controller {
@@ -50,5 +52,6 @@ func New() *Controller {
 		BookingCtl:         booking.NewController(db),
 		LogoutCtl:          logout.NewController(db),
 		User_RoleCtl:       user_role.NewController(db),
+		EquipmentCtl:       equipment.NewController(db),
 	}
 }

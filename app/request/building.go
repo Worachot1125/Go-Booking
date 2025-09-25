@@ -1,10 +1,11 @@
 package request
 
 type CreateBuilding struct {
-	Name string  `json:"name"`
+	Name      string `json:"name" form:"name"`
+	Image_url string `json:"image_url" form:"image_url"`
 }
 
-type UpdateBuilding struct{
+type UpdateBuilding struct {
 	CreateBuilding
 }
 
@@ -17,6 +18,6 @@ type ListBuilding struct {
 	SearchBy string `form:"search_by"`
 }
 
-type GetByIdBuilding struct{
+type GetByIdBuilding struct {
 	ID string `uri:"id" binding:"required"`
 }

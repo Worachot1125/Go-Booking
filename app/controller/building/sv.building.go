@@ -13,6 +13,7 @@ import (
 func (s *Service) Create(ctx context.Context, req request.CreateBuilding) (*model.Building, bool, error) {
 	m := model.Building{
 		Name: req.Name,
+		Image_url:   req.Image_url,
 	}
 	_, err := s.db.NewInsert().Model(&m).Exec(ctx)
 	if err != nil {
@@ -33,19 +34,21 @@ func (s *Service) Update(ctx context.Context, req request.UpdateBuilding, id req
 	}
 
 	m := &model.Building{
-		ID:   id.ID,
-		Name: req.Name,
-	}
+    ID:   id.ID,
+    Name: req.Name,
+    Image_url: req.Image_url, // เพิ่มบรรทัดนี้!
+}
 
-	m.SetUpdateNow()
+m.SetUpdateNow()
 
-	_, err = s.db.NewUpdate().Model(m).
-		Set("name = ?name").
-		Set("updated_at = ?updated_at").
-		WherePK().
-		OmitZero().
-		Returning("*").
-		Exec(ctx)
+_, err = s.db.NewUpdate().Model(m).
+    Set("name = ?name").
+    Set("image_url = ?image_url"). // เพิ่มบรรทัดนี้!
+    Set("updated_at = ?updated_at").
+    WherePK().
+    OmitZero().
+    Returning("*").
+    Exec(ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {
 			return nil, true, errors.New("building already exists")
@@ -63,17 +66,23 @@ func (s *Service) List(ctx context.Context, req request.ListBuilding) ([]respons
 		TableExpr("buildings AS b").
 		ColumnExpr("b.id").
 		ColumnExpr("b.name").
+		ColumnExpr("b.image_url").
 		ColumnExpr("b.created_at").
 		ColumnExpr("b.updated_at").
 		ColumnExpr(`COALESCE(
-						json_agg(
-							jsonb_build_object(
-								'id', r.id,
-								'name', r.name
-							) ORDER BY r.name
-						) FILTER (WHERE r.id IS NOT NULL),
-						'[]'
-					) AS rooms_name`).
+					json_agg(
+						jsonb_build_object(
+							'id', r.id,
+							'name', r.name,
+							'description', r.description,
+							'capacity', r.capacity,
+							'image_url', r.image_url,
+							'created_at', r.created_at,
+							'updated_at', r.updated_at
+						) ORDER BY r.name
+					) FILTER (WHERE r.id IS NOT NULL),
+					'[]'
+				) AS rooms`). // แก้ชื่อเป็น rooms
 		Join("LEFT JOIN building_rooms AS br ON br.building_id::uuid = b.id::uuid").
 		Join("LEFT JOIN rooms AS r ON r.id::uuid = br.room_id::uuid").
 		Where("b.deleted_at IS NULL").
@@ -122,6 +131,7 @@ func (s *Service) List(ctx context.Context, req request.ListBuilding) ([]respons
 
 	return m, count, nil
 }
+
 
 func (s *Service) Get(ctx context.Context, id request.GetByIdBuilding) ([]response.BuildingResponse, error) {
 	m := []response.BuildingResponse{}

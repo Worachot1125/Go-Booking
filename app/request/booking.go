@@ -10,6 +10,7 @@ type CreateBooking struct {
 	EndTime     int64  `json:"end_time"`
 	ApprovedBy  string `json:"approved_by"`
 	Status      string `json:"status"`
+	EquipmentIDs []string `json:"equipment_ids"`
 }
 
 type UpdateBooking struct {

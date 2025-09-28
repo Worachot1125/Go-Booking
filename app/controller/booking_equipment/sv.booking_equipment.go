@@ -22,16 +22,9 @@ func (s *Service) Create(ctx context.Context, bookingID string, equipments []req
             return nil, errors.New("equipment not found")
         }
 
-        // 2. เช็คจำนวน
-        if equipment.Available_Quantity < eq.Quantity || eq.Quantity <= 0 {
-            return nil, errors.New("equipment " + equipment.Name + " is not available in requested quantity")
-        }
-
-        // 3. ลด available_​quantity
-        equipment.Available_Quantity -= eq.Quantity
         _, err = s.db.NewUpdate().
             Model(&equipment).
-            Set("available_quantity = ?", equipment.Available_Quantity).
+            Set("available_quantity = ?", equipment.Quantity).
             Where("id = ?", eq.EquipmentID).
             Exec(ctx)
         if err != nil {
@@ -77,9 +70,6 @@ func (s *Service) Update(ctx context.Context, req request.UpdateEquipment, id st
 	}
 	if req.Quantity != nil {
 		m.Quantity = *req.Quantity
-	}
-	if req.Available_Quantity != nil {
-		m.Available_Quantity = *req.Available_Quantity
 	}
 	if req.Status != nil {
 		m.Status = enum.EquipmentStatus(*req.Status)

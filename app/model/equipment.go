@@ -13,7 +13,6 @@ type Equipment struct {
 	Name               string               `bun:"name,notnull"`
 	Image_URL          string               `bun:"image_url,notnull"`
 	Quantity           int                  `bun:"quantity,notnull"`
-	Available_Quantity int                  `bun:"available_quantity,notnull"`
 	Status             enum.EquipmentStatus `bun:"status"`
 
 	CreateUpdateUnixTimestamp

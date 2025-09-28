@@ -3,7 +3,7 @@ package model
 import "github.com/uptrace/bun"
 
 type BookingEquipment struct {
-	bun.BaseModel `bun:"table:building_rooms,alias:br"`
+	bun.BaseModel `bun:"table:booking_equipments,alias:be"`
 
 	ID          string     `bun:",pk,type:uuid,default:gen_random_uuid()"`
 	BookingID   *Booking   `bun:"booking_id,notnull"`

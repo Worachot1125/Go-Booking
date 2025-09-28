@@ -16,7 +16,6 @@ func (s *Service) Create(ctx context.Context, req request.CreateEquipment) (*mod
 		Name:               req.Name,
 		Image_URL:          req.Image_URL,
 		Quantity:           req.Quantity,
-		Available_Quantity: req.Available_Quantity,
 		Status:             enum.EquipmentAvaliable,
 	}
 	_, err := s.db.NewInsert().Model(&m).Exec(ctx)
@@ -53,9 +52,6 @@ func (s *Service) Update(ctx context.Context, req request.UpdateEquipment, id st
 	}
 	if req.Quantity != nil {
 		m.Quantity = *req.Quantity
-	}
-	if req.Available_Quantity != nil {
-		m.Available_Quantity = *req.Available_Quantity
 	}
 	if req.Status != nil {
 		m.Status = enum.EquipmentStatus(*req.Status)

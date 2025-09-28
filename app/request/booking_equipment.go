@@ -3,6 +3,7 @@ package request
 type CreateBookingEquipment struct {
 	BookingID   string `json:"booking_id"`
 	EquipmentID string `json:"equipment_id"`
+	Quantity    int    `json:"quantity"`
 }
 
 type UpdateBookingEquipment struct {
@@ -19,6 +20,6 @@ type ListEquipmentBooking struct {
 }
 
 type EquipmentSelection struct {
-    EquipmentID string `json:"equipment_id" form:"equipment_id"`
-    Quantity    int    `json:"quantity" form:"quantity"`
+	EquipmentID string `json:"equipment_id" form:"equipment_id"`
+	Quantity    int    `json:"quantity" form:"quantity"`
 }

@@ -44,11 +44,6 @@ func (ctl *Controller) Update(ctx *gin.Context) {
             req.Quantity = &q
         }
     }
-    if availableQuantity := ctx.PostForm("available_quantity"); availableQuantity != "" {
-        if aq, err := strconv.Atoi(availableQuantity); err == nil {
-            req.Available_Quantity = &aq
-        }
-    }
     if status := ctx.PostForm("status"); status != "" {
         req.Status = &status
     }
@@ -81,7 +76,6 @@ func (ctl *Controller) Update(ctx *gin.Context) {
         Name:               data.Name,
         Image_URL:          data.Image_URL,
         Quantity:           data.Quantity,
-        Available_Quantity: data.Available_Quantity,
         Status:             string(data.Status),
         CreatedAt:          data.CreatedAt,
         UpdatedAt:          data.UpdatedAt,
@@ -123,7 +117,6 @@ func (ctl *Controller) Get(ctx *gin.Context) {
 		Name:               data.Name,
 		Image_URL:          data.Image_URL,
 		Quantity:           data.Quantity,
-		Available_Quantity: data.Available_Quantity,
 		Status:             string(data.Status),
 		CreatedAt:          data.CreatedAt,
 		UpdatedAt:          data.UpdatedAt,
@@ -165,7 +158,6 @@ func (ctl *Controller) List(ctx *gin.Context) {
 			Name:               d.Name,
 			Image_URL:          d.Image_URL,
 			Quantity:           d.Quantity,
-			Available_Quantity: d.Available_Quantity,
 			Status:             string(d.Status),
 			CreatedAt:          d.CreatedAt,
 			UpdatedAt:          d.UpdatedAt,

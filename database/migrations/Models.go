@@ -15,7 +15,8 @@ func Models() []any {
 		// (*model.Room)(nil),
 		// (*model.User_Role)(nil),
 		//(*model.Equipment)(nil),
-		(*model.BookingEquipment)(nil),
+		//(*model.BookingEquipment)(nil),
+		(*model.Reviews)(nil),
 	}
 }
 

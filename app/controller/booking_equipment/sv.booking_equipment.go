@@ -33,8 +33,8 @@ func (s *Service) Create(ctx context.Context, bookingID string, equipments []req
 
         // 4. สร้าง booking_equipment
 		be := model.BookingEquipment{
-			BookingID:   &model.Booking{ID: bookingID},
-			EquipmentID: &model.Equipment{ID: eq.EquipmentID},
+			BookingID:   bookingID,
+			EquipmentID: eq.EquipmentID,
 			Quantity:    eq.Quantity,
 		}
         _, err = s.db.NewInsert().Model(&be).Exec(ctx)

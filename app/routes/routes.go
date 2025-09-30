@@ -39,7 +39,6 @@ func Router(app *gin.Engine) {
 	apiV1 := app.Group("/api/v1")
 
 	// Define groups of routes under /api/v1
-	Product(apiV1.Group("/products"))
 	User(apiV1.Group("/users"))
 	Room(apiV1.Group("/rooms"))
 	Position(apiV1.Group("/positions"))
@@ -54,4 +53,5 @@ func Router(app *gin.Engine) {
 	User_Role(apiV1.Group("/userRoles"))
 	Equipment(apiV1.Group("/equipments"))
 	Booking_Equipment(apiV1.Group("/bookingEquipments"))
+	Reviews(apiV1.Group("/reviews"))
 }

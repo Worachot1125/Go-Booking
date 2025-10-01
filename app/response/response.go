@@ -61,9 +61,15 @@ func BadRequest(ctx *gin.Context, message any) {
 }
 
 func Unauthorized(ctx *gin.Context, message any, payloadCode ...string) {
-	ctx.JSON(http.StatusInternalServerError, StatusResponse{
+	msg := "Unauthorized"
+	if message != nil {
+		if s, ok := message.(string); ok {
+			msg = s
+		}
+	}
+	ctx.JSON(http.StatusUnauthorized, StatusResponse{
 		Code:    401,
-		Message: message.(string), // Set the message directly here
+		Message: msg,
 	})
 }
 

@@ -7,11 +7,13 @@ type Reviews struct {
 	ID            string `bun:",pk,type:uuid,default:gen_random_uuid()"`
 	UserID        string `bun:"user_id,notnull"`
 	RoomID        string `bun:"room_id,notnull"`
+	BookingID     string `bun:"booking_id,notnull"`
 	Rating        int    `bun:"rating,notnull"`
 	Comment       string `bun:"comment"`
 
-	User *User `bun:"rel:belongs-to,join:user_id=id"`
-	Room *Room `bun:"rel:belongs-to,join:room_id=id"`
+	User    *User    `bun:"rel:belongs-to,join:user_id=id"`
+	Room    *Room    `bun:"rel:belongs-to,join:room_id=id"`
+	Booking *Booking `bun:"rel:belongs-to,join:booking_id=id"`
 
 	CreateUpdateUnixTimestamp
 	SoftDelete

@@ -17,6 +17,7 @@ func (s *Service) Create(ctx context.Context, req request.CreateReviews) (*respo
 		Model((*model.Reviews)(nil)).
 		Where("room_id = ?", req.RoomID).
 		Where("user_id = ?", req.UserID).
+		Where("booking_id = ?", req.BookingID).
 		Exists(ctx)
 	if err != nil {
 		return nil, false, err
@@ -28,6 +29,7 @@ func (s *Service) Create(ctx context.Context, req request.CreateReviews) (*respo
 	m := &model.Reviews{
 		UserID:  req.UserID,
 		RoomID:  req.RoomID,
+		BookingID: req.BookingID,
 		Rating:  req.Rating,
 		Comment: req.Comment,
 	}
@@ -42,6 +44,7 @@ func (s *Service) Create(ctx context.Context, req request.CreateReviews) (*respo
 		ID:        m.ID,
 		User_ID:   m.UserID,
 		Room_ID:   m.RoomID,
+		Booking_ID: m.BookingID,
 		Rating:    int64(m.Rating),
 		Comment:   m.Comment,
 		CreatedAt: m.CreatedAt,
@@ -74,6 +77,7 @@ func (s *Service) Update(ctx context.Context, req request.UpdateReviews, id requ
 		ID:        m.ID,
 		User_ID:   m.UserID,
 		Room_ID:   m.RoomID,
+		Booking_ID: m.BookingID,
 		Rating:    int64(m.Rating),
 		Comment:   m.Comment,
 		CreatedAt: m.CreatedAt,
@@ -93,6 +97,7 @@ func (s *Service) List(ctx context.Context, req request.ListReviews) ([]response
 		ColumnExpr("rv.id").
 		ColumnExpr("rv.user_id").
 		ColumnExpr("rv.room_id").
+		ColumnExpr("rv.booking_id").
 		ColumnExpr("rv.rating").
 		ColumnExpr("rv.comment").
 		ColumnExpr("rv.created_at").
@@ -137,6 +142,7 @@ func (s *Service) Get(ctx context.Context, id request.GetByIDReviews) (*response
 		ColumnExpr("rv.id").
 		ColumnExpr("rv.user_id").
 		ColumnExpr("rv.room_id").
+		ColumnExpr("rv.booking_id").
 		ColumnExpr("rv.rating").
 		ColumnExpr("rv.comment").
 		ColumnExpr("rv.created_at").

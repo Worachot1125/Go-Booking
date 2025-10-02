@@ -1,10 +1,10 @@
 package request
 
 type CreateReviews struct {
-	UserID    string `json:"user_id"`
-	RoomID    string `json:"room_id"`
-	BookingID string `json:"booking_id"`
-	Rating    int    `json:"rating"`
+	UserID    string `json:"user_id" binding:"required"`
+	RoomID    string `json:"room_id" binding:"required"`
+	BookingID string `json:"booking_id" binding:"required"`
+	Rating    int    `json:"rating" binding:"required"`
 	Comment   string `json:"comment"`
 }
 
@@ -26,5 +26,5 @@ type GetByIDReviews struct {
 }
 
 type GetByBookingIDReviews struct {
-	BookingID string `uri:"booking_id" binding:"required"`
+	BookingID string `uri:"id" binding:"required"`
 }

@@ -6,13 +6,10 @@ import (
 	"app/app/response"
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 )
 
-// Create รีวิวใหม่
 func (s *Service) Create(ctx context.Context, req request.CreateReviews) (*response.ReviewsResponse, bool, error) {
-	// ตรวจสอบว่าผู้ใช้ได้รีวิวห้องนี้แล้วหรือไม่
 	ex, err := s.db.NewSelect().
 		Model((*model.Reviews)(nil)).
 		Where("room_id = ?", req.RoomID).
@@ -27,11 +24,11 @@ func (s *Service) Create(ctx context.Context, req request.CreateReviews) (*respo
 	}
 
 	m := &model.Reviews{
-		UserID:  req.UserID,
-		RoomID:  req.RoomID,
+		UserID:    req.UserID,
+		RoomID:    req.RoomID,
 		BookingID: req.BookingID,
-		Rating:  req.Rating,
-		Comment: req.Comment,
+		Rating:    req.Rating,
+		Comment:   req.Comment,
 	}
 
 	_, err = s.db.NewInsert().Model(m).Returning("*").Exec(ctx)
@@ -39,7 +36,6 @@ func (s *Service) Create(ctx context.Context, req request.CreateReviews) (*respo
 		return nil, false, err
 	}
 
-	// Map ไป struct response
 	resp := &response.ReviewsResponse{
 		ID:        m.ID,
 		User_ID:   m.UserID,
@@ -54,7 +50,6 @@ func (s *Service) Create(ctx context.Context, req request.CreateReviews) (*respo
 	return resp, false, nil
 }
 
-// Update รีวิว
 func (s *Service) Update(ctx context.Context, req request.UpdateReviews, id request.GetByIDReviews) (*response.ReviewsResponse, bool, error) {
 	m := &model.Reviews{
 		ID:      id.ID,
@@ -87,7 +82,6 @@ func (s *Service) Update(ctx context.Context, req request.UpdateReviews, id requ
 	return resp, false, nil
 }
 
-// List รีวิว
 func (s *Service) List(ctx context.Context, req request.ListReviews) ([]response.ReviewsResponse, int, error) {
 	offset := (req.Page - 1) * req.Size
 	m := []response.ReviewsResponse{}
@@ -104,27 +98,21 @@ func (s *Service) List(ctx context.Context, req request.ListReviews) ([]response
 		ColumnExpr("rv.updated_at").
 		Where("rv.deleted_at IS NULL")
 
-	// Filtering
 	if req.Search != "" {
 		search := "%" + strings.ToLower(req.Search) + "%"
 		if req.SearchBy != "" {
-			searchBy := strings.ToLower(req.SearchBy)
-			query = query.Where(fmt.Sprintf("LOWER(rv.%s) LIKE ?", searchBy), search)
+			query = query.Where("LOWER(rv."+req.SearchBy+") LIKE ?", search)
 		} else {
 			query = query.Where("LOWER(rv.comment) LIKE ?", search)
 		}
 	}
 
-	// Count
 	count, err := query.Count(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// Order
-	order := fmt.Sprintf("rv.%s %s", req.SortBy, req.OrderBy)
-
-	// Scan เข้า response struct
+	order := "rv." + req.SortBy + " " + req.OrderBy
 	err = query.Order(order).Limit(req.Size).Offset(offset).Scan(ctx, &m)
 	if err != nil {
 		return nil, 0, err
@@ -135,7 +123,6 @@ func (s *Service) List(ctx context.Context, req request.ListReviews) ([]response
 
 func (s *Service) Get(ctx context.Context, id request.GetByIDReviews) (*response.ReviewsResponse, error) {
 	m := response.ReviewsResponse{}
-
 	err := s.db.NewSelect().
 		TableExpr("reviews AS rv").
 		ColumnExpr("rv.id").
@@ -149,17 +136,14 @@ func (s *Service) Get(ctx context.Context, id request.GetByIDReviews) (*response
 		Where("rv.id = ?", id.ID).
 		Where("rv.deleted_at IS NULL").
 		Scan(ctx, &m)
-
 	if err != nil {
 		return nil, err
 	}
-
 	return &m, nil
 }
 
-func (s *Service) GetByBookingID(ctx context.Context, bookingID string) ([]response.ReviewsResponse, error) {
+func (s *Service) GetByBookingID(ctx context.Context, bookingID request.GetByBookingIDReviews) ([]response.ReviewsResponse, error) {
 	var reviews []response.ReviewsResponse
-
 	err := s.db.NewSelect().
 		TableExpr("reviews AS rv").
 		ColumnExpr("rv.id").
@@ -170,14 +154,12 @@ func (s *Service) GetByBookingID(ctx context.Context, bookingID string) ([]respo
 		ColumnExpr("rv.comment").
 		ColumnExpr("rv.created_at").
 		ColumnExpr("rv.updated_at").
-		Where("rv.booking_id = ?", bookingID).
+		Where("rv.booking_id = ?", bookingID.BookingID).
 		Where("rv.deleted_at IS NULL").
 		Scan(ctx, &reviews)
-
 	if err != nil {
 		return nil, err
 	}
-
 	return reviews, nil
 }
 

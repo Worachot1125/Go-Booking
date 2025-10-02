@@ -32,31 +32,33 @@ func (ctl *Controller) Create(ctx *gin.Context) {
 func (ctl *Controller) Update(ctx *gin.Context) {
 	ID := request.GetByIDReviews{}
 	if err := ctx.BindUri(&ID); err != nil {
-		logger.Err(err.Error())
 		response.BadRequest(ctx, err.Error())
 		return
 	}
+
 	body := request.UpdateReviews{}
 	if err := ctx.Bind(&body); err != nil {
-		logger.Err(err.Error())
 		response.BadRequest(ctx, err.Error())
 		return
 	}
 
-	_, _, err := ctl.Service.Update(ctx, body, ID)
+	data, mserr, err := ctl.Service.Update(ctx, body, ID)
 	if err != nil {
+		ms := "Internal Server Error"
+		if mserr {
+			ms = err.Error()
+		}
 		logger.Err(err.Error())
-		response.InternalError(ctx, err.Error())
+		response.InternalError(ctx, ms)
 		return
 	}
 
-	response.Success(ctx, nil)
+	response.Success(ctx, data)
 }
 
 func (ctl *Controller) List(ctx *gin.Context) {
 	req := request.ListReviews{}
-	if err := ctx.Bind(&req); err != nil {
-		logger.Err(err.Error())
+	if err := ctx.BindQuery(&req); err != nil {
 		response.BadRequest(ctx, err.Error())
 		return
 	}
@@ -76,27 +78,26 @@ func (ctl *Controller) List(ctx *gin.Context) {
 
 	data, total, err := ctl.Service.List(ctx, req)
 	if err != nil {
-		logger.Errf(err.Error())
 		response.InternalError(ctx, err.Error())
 		return
 	}
+
 	response.SuccessWithPaginate(ctx, data, req.Size, req.Page, total)
 }
 
 func (ctl *Controller) Get(ctx *gin.Context) {
 	ID := request.GetByIDReviews{}
 	if err := ctx.BindUri(&ID); err != nil {
-		logger.Err(err.Error())
 		response.BadRequest(ctx, err.Error())
 		return
 	}
 
 	data, err := ctl.Service.Get(ctx, ID)
 	if err != nil {
-		logger.Errf(err.Error())
 		response.InternalError(ctx, err.Error())
 		return
 	}
+
 	response.Success(ctx, data)
 }
 
@@ -107,7 +108,7 @@ func (ctl *Controller) GetByBookingID(ctx *gin.Context) {
 		return
 	}
 
-	data, err := ctl.Service.GetByBookingID(ctx, req.BookingID)
+	data, err := ctl.Service.GetByBookingID(ctx, req)
 	if err != nil {
 		response.InternalError(ctx, err.Error())
 		return
@@ -119,16 +120,15 @@ func (ctl *Controller) GetByBookingID(ctx *gin.Context) {
 func (ctl *Controller) Delete(ctx *gin.Context) {
 	ID := request.GetByIDReviews{}
 	if err := ctx.BindUri(&ID); err != nil {
-		logger.Err(err.Error())
 		response.BadRequest(ctx, err.Error())
 		return
 	}
 
 	err := ctl.Service.Delete(ctx, ID)
 	if err != nil {
-		logger.Errf(err.Error())
 		response.InternalError(ctx, err.Error())
 		return
 	}
+
 	response.Success(ctx, nil)
 }

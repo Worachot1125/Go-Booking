@@ -24,3 +24,7 @@ type ListReviews struct {
 type GetByIDReviews struct {
 	ID string `uri:"id" binding:"required"`
 }
+
+type GetByBookingIDReviews struct {
+	BookingID string `uri:"booking_id" binding:"required"`
+}

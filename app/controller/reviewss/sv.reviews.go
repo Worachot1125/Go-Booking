@@ -133,7 +133,6 @@ func (s *Service) List(ctx context.Context, req request.ListReviews) ([]response
 	return m, count, nil
 }
 
-// Get รีวิว
 func (s *Service) Get(ctx context.Context, id request.GetByIDReviews) (*response.ReviewsResponse, error) {
 	m := response.ReviewsResponse{}
 
@@ -158,7 +157,30 @@ func (s *Service) Get(ctx context.Context, id request.GetByIDReviews) (*response
 	return &m, nil
 }
 
-// Delete รีวิว
+func (s *Service) GetByBookingID(ctx context.Context, bookingID string) ([]response.ReviewsResponse, error) {
+	var reviews []response.ReviewsResponse
+
+	err := s.db.NewSelect().
+		TableExpr("reviews AS rv").
+		ColumnExpr("rv.id").
+		ColumnExpr("rv.user_id").
+		ColumnExpr("rv.room_id").
+		ColumnExpr("rv.booking_id").
+		ColumnExpr("rv.rating").
+		ColumnExpr("rv.comment").
+		ColumnExpr("rv.created_at").
+		ColumnExpr("rv.updated_at").
+		Where("rv.booking_id = ?", bookingID).
+		Where("rv.deleted_at IS NULL").
+		Scan(ctx, &reviews)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return reviews, nil
+}
+
 func (s *Service) Delete(ctx context.Context, id request.GetByIDReviews) error {
 	ex, err := s.db.NewSelect().
 		Table("reviews").

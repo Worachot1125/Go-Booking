@@ -100,6 +100,22 @@ func (ctl *Controller) Get(ctx *gin.Context) {
 	response.Success(ctx, data)
 }
 
+func (ctl *Controller) GetByBookingID(ctx *gin.Context) {
+	req := request.GetByBookingIDReviews{}
+	if err := ctx.BindUri(&req); err != nil {
+		response.BadRequest(ctx, err.Error())
+		return
+	}
+
+	data, err := ctl.Service.GetByBookingID(ctx, req.BookingID)
+	if err != nil {
+		response.InternalError(ctx, err.Error())
+		return
+	}
+
+	response.Success(ctx, data)
+}
+
 func (ctl *Controller) Delete(ctx *gin.Context) {
 	ID := request.GetByIDReviews{}
 	if err := ctx.BindUri(&ID); err != nil {

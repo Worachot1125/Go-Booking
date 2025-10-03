@@ -18,69 +18,83 @@ import (
 )
 
 func (ctl *Controller) Create(ctx *gin.Context) {
-	// อ่านฟิลด์ทีละตัว ไม่ใช้ ShouldBind
-	name := ctx.PostForm("name")
-	description := ctx.PostForm("description")
-	capacityStr := ctx.PostForm("capacity")
+    name := ctx.PostForm("name")
+    description := ctx.PostForm("description")
+    capacityStr := ctx.PostForm("capacity")
+    roomType := ctx.PostForm("room_type_id")
+    startRoomStr := ctx.PostForm("start_room")
+    endRoomStr := ctx.PostForm("end_room")
 
-	if name == "" || description == "" || capacityStr == "" {
-		response.BadRequest(ctx, "ข้อมูลห้องไม่ครบ")
-		return
-	}
+    if name == "" || description == "" || capacityStr == "" || roomType == "" || startRoomStr == "" || endRoomStr == "" {
+        response.BadRequest(ctx, "ข้อมูลห้องไม่ครบ")
+        return
+    }
 
-	// แปลง capacity จาก string เป็น int
-	capacity, err := strconv.Atoi(capacityStr)
-	if err != nil {
-		response.BadRequest(ctx, "จำนวนคนต้องเป็นตัวเลข")
-		return
-	}
+    capacity, err := strconv.Atoi(capacityStr)
+    if err != nil {
+        response.BadRequest(ctx, "จำนวนคนต้องเป็นตัวเลข")
+        return
+    }
 
-	// รับไฟล์รูปภาพ
-	file, err := ctx.FormFile("image_url")
-	if err != nil {
-		logger.Errf("No file uploaded: %v", err)
-		response.BadRequest(ctx, "กรุณาเลือกไฟล์รูปภาพ")
-		return
-	}
+    startRoom, err := strconv.ParseInt(startRoomStr, 10, 64)
+    if err != nil {
+        response.BadRequest(ctx, "ค่า start_room ต้องเป็น Unix timestamp")
+        return
+    }
 
-	src, err := file.Open()
-	if err != nil {
-		logger.Errf("Cannot open uploaded file: %v", err)
-		response.InternalError(ctx, "ไม่สามารถเปิดไฟล์ได้")
-		return
-	}
-	defer src.Close()
+    endRoom, err := strconv.ParseInt(endRoomStr, 10, 64)
+    if err != nil {
+        response.BadRequest(ctx, "ค่า end_room ต้องเป็น Unix timestamp")
+        return
+    }
 
-	imageURL, err := helper.UploadImageToCloudinary(src)
+    file, err := ctx.FormFile("image_url")
+    if err != nil {
+        logger.Errf("No file uploaded: %v", err)
+        response.BadRequest(ctx, "กรุณาเลือกไฟล์รูปภาพ")
+        return
+    }
 
-	if err != nil {
-		logger.Errf("Upload to Cloudinary failed: %v", err)
-		response.InternalError(ctx, "ไม่สามารถอัปโหลดรูปภาพได้")
-		return
-	}
+    src, err := file.Open()
+    if err != nil {
+        logger.Errf("Cannot open uploaded file: %v", err)
+        response.InternalError(ctx, "ไม่สามารถเปิดไฟล์ได้")
+        return
+    }
+    defer src.Close()
 
-	// เตรียมสร้างข้อมูลห้อง
-	req := request.CreateRoom{
-		Name:        name,
-		Description: description,
-		Capacity:    int64(capacity),
-		Image_url:   imageURL,
-	}
+    imageURL, err := helper.UploadImageToCloudinary(src)
+    if err != nil {
+        logger.Errf("Upload to Cloudinary failed: %v", err)
+        response.InternalError(ctx, "ไม่สามารถอัปโหลดรูปภาพได้")
+        return
+    }
 
-	// เรียก Service.Create
-	data, mserr, err := ctl.Service.Create(ctx, req)
-	if err != nil {
-		ms := "Internal Server Error"
-		if mserr {
-			ms = err.Error()
-		}
-		logger.Err(err.Error())
-		response.InternalError(ctx, ms)
-		return
-	}
+    req := request.CreateRoom{
+        Name:        name,
+        Description: description,
+        Capacity:    int64(capacity),
+        RoomTypeID:  roomType,
+        Image_url:   imageURL,
+        StartRoom:   startRoom,
+        EndRoom:     endRoom,
+		Is_Available: true, // ห้องใหม่จะพร้อมใช้งานเสมอ
+    }
 
-	response.Success(ctx, data)
+    data, mserr, err := ctl.Service.Create(ctx, req)
+    if err != nil {
+        ms := "Internal Server Error"
+        if mserr {
+            ms = err.Error()
+        }
+        logger.Err(err.Error())
+        response.InternalError(ctx, ms)
+        return
+    }
+
+    response.Success(ctx, data)
 }
+
 
 func (ctl *Controller) Update(ctx *gin.Context) {
 	ID := request.GetByIdRoom{}
@@ -94,6 +108,9 @@ func (ctl *Controller) Update(ctx *gin.Context) {
 	description := ctx.PostForm("description")
 	capacityStr := ctx.PostForm("capacity")
 	existingImageURL := ctx.PostForm("existing_image_url")
+	isAvailableStr := ctx.PostForm("is_available")
+	maintenanceNote := ctx.PostForm("maintenance_note")
+	maintenanceETA := ctx.PostForm("maintenance_eta")
 
 	var capacity int64
 	if capacityStr != "" {
@@ -104,6 +121,12 @@ func (ctl *Controller) Update(ctx *gin.Context) {
 		}
 		capacity = int64(c)
 	}
+
+	isAvailable := true // default
+    if isAvailableStr != "" {
+        isAvailable = isAvailableStr == "true" || isAvailableStr == "1"
+    }
+	isAvailablePtr := &isAvailable // สร้าง pointer
 
 	imageURL := existingImageURL
 	file, err := ctx.FormFile("image_url")
@@ -131,7 +154,10 @@ func (ctl *Controller) Update(ctx *gin.Context) {
 			Description: description,
 			Capacity:    capacity, // จะเป็น 0 ถ้าไม่ได้กรอก
 			Image_url:   imageURL,
+			MaintenanceNote: maintenanceNote,
+			MaintenanceETA:  maintenanceETA,
 		},
+		Is_Available: isAvailablePtr,
 	}
 
 	_, mserr, err := ctl.Service.Update(ctx, req, ID)

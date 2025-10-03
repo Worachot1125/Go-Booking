@@ -12,12 +12,13 @@ func Models() []any {
 		// (*model.Position)(nil),
 		// (*model.Role)(nil),
 		// (*model.Role_Permission)(nil),
-		// (*model.Room)(nil),
+		(*model.Room)(nil),
 		// (*model.User_Role)(nil),
 		//(*model.Equipment)(nil),
 		//(*model.BookingEquipment)(nil),
-		(*model.Reviews)(nil),
+		//(*model.Reviews)(nil),
 		//(*model.Report)(nil),
+		//(*model.RoomType)(nil),
 	}
 }
 

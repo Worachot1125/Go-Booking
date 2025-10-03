@@ -11,22 +11,41 @@ import (
 	"strings"
 )
 
-func (s *Service) Create(ctx context.Context, req request.CreateRoom) (*model.Room, bool, error) {
-	// ตรวจสอบข้อมูลห้องก่อนที่จะบันทึก
+func (s *Service) Create(ctx context.Context, req request.CreateRoom) (*response.RooomResponse, bool, error) {
 	if req.Name == "" || req.Description == "" || req.Capacity == 0 || req.Image_url == "" {
 		return nil, false, errors.New("ข้อมูลห้องไม่ครบถ้วน")
 	}
-
-	// สร้างโมเดลห้องใหม่
-	m := model.Room{
-		Name:        req.Name,
-		Description: req.Description,
-		Capacity:    req.Capacity,
-		Image_url:   req.Image_url,
+	if req.RoomTypeID == "" {
+		return nil, false, errors.New("room type is required")
 	}
 
-	// ทำการบันทึกข้อมูลห้องลงในฐานข้อมูล
-	_, err := s.db.NewInsert().Model(&m).Exec(ctx)
+	exists, err := s.db.NewSelect().
+		Model((*model.Room)(nil)).
+		Where("room_type_id = ?", req.RoomTypeID).
+		Where("start_room < ?", req.EndRoom).
+		Where("end_room > ?", req.StartRoom).
+		Where("deleted_at IS NULL").
+		Exists(ctx)
+	if err != nil {
+		return nil, false, err
+	}
+	if exists {
+		return nil, true, errors.New("room range conflict")
+	}
+
+	m := model.Room{
+		RoomTypeID:       req.RoomTypeID,
+		Name:             req.Name,
+		Description:      req.Description,
+		Capacity:         req.Capacity,
+		Image_url:        req.Image_url,
+		StartRoom:        req.StartRoom,
+		EndRoom:          req.EndRoom,
+		Maintenance_note: req.MaintenanceNote,
+		Maintenance_eta:  req.MaintenanceETA,
+	}
+
+	_, err = s.db.NewInsert().Model(&m).Exec(ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {
 			return nil, true, errors.New("room already exists")
@@ -34,7 +53,31 @@ func (s *Service) Create(ctx context.Context, req request.CreateRoom) (*model.Ro
 		return nil, false, err
 	}
 
-	return &m, false, nil
+	// 🔑 map ไปเป็น response.RooomResponse
+	var deletedAt int64
+	if m.DeletedAt != nil {
+		deletedAt = m.DeletedAt.Unix()
+	} else {
+		deletedAt = 0
+	}
+	res := response.RooomResponse{
+		ID:              m.ID,
+		RoomTypeID:      m.RoomTypeID,
+		Name:            m.Name,
+		Capacity:        m.Capacity,
+		Description:     m.Description,
+		ImageURL:        m.Image_url,
+		StartRoom:       m.StartRoom,
+		EndRoom:         m.EndRoom,
+		Is_Available:    m.Is_Available,
+		MaintenanceNote: m.Maintenance_note,
+		MaintenanceETA:  m.Maintenance_eta,
+		CreatedAt:       m.CreatedAt,
+		UpdatedAt:       m.UpdatedAt,
+		DeletedAt:       deletedAt,
+	}
+
+	return &res, false, nil
 }
 
 func (s *Service) Update(ctx context.Context, req request.UpdateRoom, id request.GetByIdRoom) (*model.Room, bool, error) {
@@ -47,11 +90,13 @@ func (s *Service) Update(ctx context.Context, req request.UpdateRoom, id request
 		return nil, false, errors.New("room not found")
 	}
 
-	// เตรียม model สำหรับอัปเดต
 	m := &model.Room{ID: id.ID}
 	q := s.db.NewUpdate().Model(m).WherePK().OmitZero().Returning("*")
 
-	// อัปเดตเฉพาะ field ที่ส่งมา
+	if req.RoomTypeID != "" {
+		m.RoomTypeID = req.RoomTypeID
+		q.Set("room_type_id = ?room_type_id")
+	}
 	if req.Name != "" {
 		m.Name = req.Name
 		q.Set("name = ?name")
@@ -68,12 +113,32 @@ func (s *Service) Update(ctx context.Context, req request.UpdateRoom, id request
 		m.Image_url = req.Image_url
 		q.Set("image_url = ?image_url")
 	}
+	if req.StartRoom > 0 {
+		m.StartRoom = req.StartRoom
+		q.Set("start_room = ?start_room")
+	}
+	if req.EndRoom > 0 {
+		m.EndRoom = req.EndRoom
+		q.Set("end_room = ?end_room")
+	}
+	if req.MaintenanceNote != "" {
+		m.Maintenance_note = req.MaintenanceNote
+		q.Set("maintenance_note = ?maintenance_note")
+	}
+	if req.MaintenanceETA != "" {
+		m.Maintenance_eta = req.MaintenanceETA
+		q.Set("maintenance_eta = ?maintenance_eta")
+	}
 
-	// อัปเดตเวลา
+	if req.Is_Available != nil { // ใช้ pointer เพื่อแยกกรณีไม่ได้ส่ง
+        m.Is_Available = *req.Is_Available
+        q.Set("is_available = ?is_available")
+    }
+
+	// update time
 	m.SetUpdateNow()
 	q.Set("updated_at = ?updated_at")
 
-	// รัน query
 	_, err = q.Exec(ctx)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value") {
@@ -102,12 +167,19 @@ func (s *Service) List(ctx context.Context, req request.ListRoom) ([]response.Ro
 		TableExpr("rooms as r").
 		ColumnExpr("r.id AS id").
 		ColumnExpr("r.name AS name").
+		ColumnExpr("r.room_type_id AS room_type_id").
 		ColumnExpr("r.description AS description").
 		ColumnExpr("r.capacity AS capacity").
 		ColumnExpr("r.image_url AS image_url").
+		ColumnExpr("r.start_room AS start_room").
+		ColumnExpr("r.end_room AS end_room").
+		ColumnExpr("r.maintenance_note AS maintenance_note").
+		ColumnExpr("r.maintenance_eta AS maintenance_eta").
+		ColumnExpr("r.is_available AS is_available").
 		ColumnExpr("b.name AS building").
 		ColumnExpr("r.created_at AS created_at").
 		ColumnExpr("r.updated_at AS updated_at").
+		Join("LEFT JOIN room_types as rt ON r.room_type_id::uuid = rt.id::uuid").
 		Join("LEFT JOIN building_rooms as br ON r.id::uuid = br.room_id::uuid").
 		Join("LEFT JOIN buildings as b ON br.building_id::uuid = b.id::uuid").
 		Where("r.deleted_at IS NULL")
@@ -163,7 +235,6 @@ func (s *Service) List(ctx context.Context, req request.ListRoom) ([]response.Ro
 	return rooms, pagination, nil
 }
 
-
 func (s *Service) Get(ctx context.Context, id request.GetByIdRoom) (*response.RooomResponse, error) {
 	m := response.RooomResponse{}
 
@@ -171,14 +242,21 @@ func (s *Service) Get(ctx context.Context, id request.GetByIdRoom) (*response.Ro
 		TableExpr("rooms as r").
 		ColumnExpr("r.id AS id").
 		ColumnExpr("r.name AS name").
+		ColumnExpr("r.room_type_id AS room_type_id").
 		ColumnExpr("r.description AS description").
 		ColumnExpr("r.capacity AS capacity").
 		ColumnExpr("r.image_url AS image_url").
+		ColumnExpr("r.start_room AS start_room").
+		ColumnExpr("r.end_room AS end_room").
+		ColumnExpr("r.maintenance_note AS maintenance_note").
+		ColumnExpr("r.maintenance_eta AS maintenance_eta").
+		ColumnExpr("r.is_available AS is_available").
 		ColumnExpr("b.name AS building").
 		ColumnExpr("r.created_at AS created_at").
 		ColumnExpr("r.updated_at AS updated_at").
-		Join("JOIN building_rooms as br ON r.id::uuid = br.room_id::uuid ").
-		Join("JOIN buildings as b ON br.building_id::uuid = b.id::uuid ").
+		Join("LEFT JOIN room_types as rt ON r.room_type_id::uuid = rt.id::uuid").
+		Join("LEFT JOIN building_rooms as br ON r.id::uuid = br.room_id::uuid").
+		Join("LEFT JOIN buildings as b ON br.building_id::uuid = b.id::uuid").
 		Where("r.deleted_at IS NULL").
 		Where("r.id = ?", id.ID).
 		Scan(ctx, &m)

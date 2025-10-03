@@ -15,5 +15,4 @@ type RooomResponse struct {
 	MaintenanceETA  string `bun:"maintenance_eta" json:"maintenance_eta"`
 	CreatedAt       int64  `bun:"created_at" json:"created_at"`
 	UpdatedAt       int64  `bun:"updated_at" json:"updated_at"`
-	DeletedAt       int64  `bun:"deleted_at" json:"deleted_at"`
 }

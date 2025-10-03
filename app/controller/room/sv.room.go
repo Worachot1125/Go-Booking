@@ -54,12 +54,6 @@ func (s *Service) Create(ctx context.Context, req request.CreateRoom) (*response
 	}
 
 	// 🔑 map ไปเป็น response.RooomResponse
-	var deletedAt int64
-	if m.DeletedAt != nil {
-		deletedAt = m.DeletedAt.Unix()
-	} else {
-		deletedAt = 0
-	}
 	res := response.RooomResponse{
 		ID:              m.ID,
 		RoomTypeID:      m.RoomTypeID,
@@ -74,7 +68,6 @@ func (s *Service) Create(ctx context.Context, req request.CreateRoom) (*response
 		MaintenanceETA:  m.Maintenance_eta,
 		CreatedAt:       m.CreatedAt,
 		UpdatedAt:       m.UpdatedAt,
-		DeletedAt:       deletedAt,
 	}
 
 	return &res, false, nil
@@ -131,9 +124,9 @@ func (s *Service) Update(ctx context.Context, req request.UpdateRoom, id request
 	}
 
 	if req.Is_Available != nil { // ใช้ pointer เพื่อแยกกรณีไม่ได้ส่ง
-        m.Is_Available = *req.Is_Available
-        q.Set("is_available = ?is_available")
-    }
+		m.Is_Available = *req.Is_Available
+		q.Set("is_available = ?is_available")
+	}
 
 	// update time
 	m.SetUpdateNow()

@@ -55,4 +55,5 @@ func Router(app *gin.Engine) {
 	Booking_Equipment(apiV1.Group("/bookingEquipments"))
 	Reviews(apiV1.Group("/reviews"))
 	Report(apiV1.Group("/reports"))
+	RoomType(apiV1.Group("/roomTypes"))
 }

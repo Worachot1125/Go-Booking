@@ -19,13 +19,15 @@ func (s *Service) Create(ctx context.Context, req request.CreateRoom) (*response
 		return nil, false, errors.New("room type is required")
 	}
 
+	// หลัง (ถูกจุดประสงค์: กันเฉพาะ "ห้องเดียวกัน")
 	exists, err := s.db.NewSelect().
 		Model((*model.Room)(nil)).
-		Where("room_type_id = ?", req.RoomTypeID).
+		Where("name = ?", req.Name).
 		Where("start_room < ?", req.EndRoom).
 		Where("end_room > ?", req.StartRoom).
 		Where("deleted_at IS NULL").
 		Exists(ctx)
+		
 	if err != nil {
 		return nil, false, err
 	}

@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 )
 
 func (s *Service) Create(ctx context.Context, req request.CreateReport) (*response.ReportResponse, error) {
@@ -26,6 +25,7 @@ func (s *Service) Create(ctx context.Context, req request.CreateReport) (*respon
 		ID:          m.ID,
 		User_ID:     m.UserID,
 		Room_ID:     m.RoomID,
+		Name_user:   m.Name_user,
 		Description: m.Description,
 		CreatedAt:   m.CreatedAt,
 		UpdatedAt:   m.UpdatedAt,
@@ -70,74 +70,62 @@ func (s *Service) Update(ctx context.Context, req request.UpdateReport, id reque
 	return resp, nil
 }
 
-func (s *Service) List(ctx context.Context, req request.ListReport) ([]response.ReportResponse, int, error) {
-	offset := (req.Page - 1) * req.Size
-	m := []response.ReportResponse{}
+func (s *Service) List(ctx context.Context) ([]response.ReportResponse, error) {
+    var reports []model.Report
 
-	query := s.db.NewSelect().
-		TableExpr("reports AS rep").
-		ColumnExpr("rep.id").
-		ColumnExpr("rep.user_id").
-		ColumnExpr("rep.room_id").
-		ColumnExpr("rep.description").
-		ColumnExpr("rep.created_at").
-		ColumnExpr("rep.updated_at").
-		Where("rep.deleted_at IS NULL")
+    err := s.db.NewSelect().
+        Model(&reports).
+        Column("rep.*").
+        ColumnExpr(`COALESCE("user".first_name || ' ' || "user".last_name, '') AS name_user`).
+        Join(`JOIN users AS "user" ON "user".id = rep.user_id::uuid AND "user".deleted_at IS NULL`).
+        Where(`rep.deleted_at IS NULL`).
+        Scan(ctx)
+    if err != nil {
+        return nil, err
+    }
 
-	if req.Search != "" {
-		search := "%" + strings.ToLower(req.Search) + "%"
-		if req.SearchBy != "" {
-			searchBy := strings.ToLower(req.SearchBy)
-			query = query.Where(fmt.Sprintf("LOWER(rep.%s) LIKE ?", searchBy), search)
-		} else {
-			query = query.Where("LOWER(rep.description) LIKE ?", search)
-		}
-	}
-
-	// นับจำนวนก่อน
-	count, err := query.Count(ctx)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to count reports: %w", err)
-	}
-	if count == 0 {
-		return []response.ReportResponse{}, 0, nil
-	}
-
-	order := fmt.Sprintf("rep.%s %s", req.SortBy, req.OrderBy)
-
-	err = query.Order(order).Limit(req.Size).Offset(offset).Scan(ctx, &m)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to list reports: %w", err)
-	}
-
-	return m, count, nil
+    // map ออก response โดยใช้ r.Name_user ที่สแกนมาจาก SQL
+    res := make([]response.ReportResponse, 0, len(reports))
+    for _, r := range reports {
+        res = append(res, response.ReportResponse{
+            ID:          r.ID,
+            User_ID:     r.UserID,
+            Name_user:   r.Name_user,
+            Room_ID:     r.RoomID,
+            Description: r.Description,
+            CreatedAt:   r.CreatedAt,
+            UpdatedAt:   r.UpdatedAt,
+        })
+    }
+    return res, nil
 }
 
-func (s *Service) Get(ctx context.Context, id request.GetByIDReport) (*response.ReportResponse, error) {
-	m := response.ReportResponse{}
 
-	err := s.db.NewSelect().
-		TableExpr("reports AS rep").
-		ColumnExpr("rep.id").
-		ColumnExpr("rep.user_id").
-		ColumnExpr("rep.room_id").
-		ColumnExpr("rep.description").
-		ColumnExpr("rep.created_at").
-		ColumnExpr("rep.updated_at").
-		Where("rep.id = ?", id.ID).
-		Where("rep.deleted_at IS NULL").
-		Scan(ctx, &m)
+func (s *Service) Get(ctx context.Context, id string) (*response.ReportResponse, error) {
+    var report model.Report
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to get report: %w", err)
-	}
+    err := s.db.NewSelect().
+        Model(&report).
+        Column("rep.*").
+        ColumnExpr(`COALESCE(u.first_name || ' ' || u.last_name, '') AS name_user`).
+        Join(`JOIN users AS u ON u.id = rep.user_id::uuid AND u.deleted_at IS NULL`).
+        Where("rep.deleted_at IS NULL").
+        Where("rep.id = ?", id).
+        Scan(ctx)
+    if err != nil {
+        return nil, err
+    }
 
-	// กัน panic: ถ้าไม่เจอ record
-	if m.ID == "" {
-		return nil, errors.New("report not found")
-	}
-
-	return &m, nil
+    res := &response.ReportResponse{
+        ID:          report.ID,
+        User_ID:     report.UserID,
+        Name_user:   report.Name_user,
+        Room_ID:     report.RoomID,
+        Description: report.Description,
+        CreatedAt:   report.CreatedAt,
+        UpdatedAt:   report.UpdatedAt,
+    }
+    return res, nil
 }
 
 func (s *Service) Delete(ctx context.Context, id request.GetByIDReport) error {

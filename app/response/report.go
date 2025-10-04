@@ -3,6 +3,7 @@ package response
 type ReportResponse struct {
 	ID          string `bun:"id" json:"id"`
 	User_ID     string `bun:"user_id" json:"user_id"`
+	Name_user   string `bun:"name" json:"name_user"`
 	Room_ID     string `bun:"room_id" json:"room_id"`
 	Description string `bun:"description" json:"description"`
 	CreatedAt   int64  `bun:"created_at" json:"created_at"`

@@ -49,7 +49,6 @@ func (ctl *Controller) Create(ctx *gin.Context) {
 		Name:               data.Name,
 		Image_URL:          data.Image_URL,
 		Quantity:           data.Quantity,
-		Status:             string(data.Status),
 		CreatedAt:          data.CreatedAt,
 		UpdatedAt:          data.UpdatedAt,
 	}
@@ -112,7 +111,6 @@ func (ctl *Controller) Update(ctx *gin.Context) {
         Name:               data.Name,
         Image_URL:          data.Image_URL,
         Quantity:           data.Quantity,
-        Status:             string(data.Status),
         CreatedAt:          data.CreatedAt,
         UpdatedAt:          data.UpdatedAt,
     }
@@ -153,7 +151,6 @@ func (ctl *Controller) Get(ctx *gin.Context) {
 		Name:               data.Name,
 		Image_URL:          data.Image_URL,
 		Quantity:           data.Quantity,
-		Status:             string(data.Status),
 		CreatedAt:          data.CreatedAt,
 		UpdatedAt:          data.UpdatedAt,
 	}
@@ -194,7 +191,6 @@ func (ctl *Controller) List(ctx *gin.Context) {
 			Name:               d.Name,
 			Image_URL:          d.Image_URL,
 			Quantity:           d.Quantity,
-			Status:             string(d.Status),
 			CreatedAt:          d.CreatedAt,
 			UpdatedAt:          d.UpdatedAt,
 		}

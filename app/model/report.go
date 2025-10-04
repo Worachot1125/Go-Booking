@@ -7,6 +7,8 @@ type Report struct {
 
 	ID          string `bun:",pk,type:uuid,default:gen_random_uuid()"`
 	UserID      string `bun:"user_id,notnull"`
+	Name_user   string `bun:"name_user,scanonly"`
+	
 	RoomID      string `bun:"room_id,notnull"`
 	Description string `bun:"description"`
 

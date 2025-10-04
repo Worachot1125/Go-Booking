@@ -72,13 +72,13 @@ func (ctl *Controller) List(ctx *gin.Context) {
 		req.SortBy = "created_at"
 	}
 
-	data, total, err := ctl.Service.List(ctx, req)
+	data, err := ctl.Service.List(ctx)
 	if err != nil {
 		logger.Err(err.Error())
 		response.InternalError(ctx, "Internal Server Error")
 		return
 	}
-	response.SuccessWithPaginate(ctx, data, req.Size, req.Page, total)
+	response.Success(ctx, data)
 }
 
 func (ctl *Controller) Get(ctx *gin.Context) {
@@ -89,7 +89,7 @@ func (ctl *Controller) Get(ctx *gin.Context) {
 		return
 	}
 
-	data, err := ctl.Service.Get(ctx, ID)
+	data, err := ctl.Service.Get(ctx, ID.ID)
 	if err != nil {
 		logger.Err(err.Error())
 		response.InternalError(ctx, "Internal Server Error")

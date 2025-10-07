@@ -11,8 +11,8 @@ import (
 
 func (ctl *Controller) Create(ctx *gin.Context) {
     var req struct {
-        BookingID   string                `json:"booking_id" form:"booking_id"`
-        Equipments  []request.EquipmentSelection `json:"equipments" form:"equipments"`
+        BookingID   string                `json:"booking_id" form:"booking_id" binding:"required,uuid"`
+        Equipments  []request.EquipmentSelection `json:"equipments" form:"equipments" binding:"required"`
     }
     if err := ctx.ShouldBind(&req); err != nil {
         response.BadRequest(ctx, "invalid request")
@@ -76,6 +76,7 @@ func (ctl *Controller) Update(ctx *gin.Context) {
         Name:               data.Name,
         Image_URL:          data.Image_URL,
         Quantity:           data.Quantity,
+        Status:             string(data.Status),
         CreatedAt:          data.CreatedAt,
         UpdatedAt:          data.UpdatedAt,
     }
@@ -116,6 +117,7 @@ func (ctl *Controller) Get(ctx *gin.Context) {
 		Name:               data.Name,
 		Image_URL:          data.Image_URL,
 		Quantity:           data.Quantity,
+		Status:             string(data.Status),
 		CreatedAt:          data.CreatedAt,
 		UpdatedAt:          data.UpdatedAt,
 	}
@@ -124,42 +126,26 @@ func (ctl *Controller) Get(ctx *gin.Context) {
 }
 
 func (ctl *Controller) List(ctx *gin.Context) {
-	req := request.ListEquipment{}
-	if err := ctx.Bind(&req); err != nil {
-		response.BadRequest(ctx, err.Error())
-		return
-	}
-
-	if req.Page == 0 {
-		req.Page = 1
-	}
-	if req.Size == 0 {
-		req.Size = 10
-	}
-	if req.SortBy == "" {
-		req.SortBy = "created_at"
-	}
-	if req.OrderBy == "" {
-		req.OrderBy = "asc"
-	}
-
-	data, count, err := ctl.Service.List(ctx, req)
-	if err != nil {
-		response.InternalError(ctx, err.Error())
-		return
-	}
-
-	res := make([]response.EquipmentResponse, len(data))
-	for i, d := range data {
-		res[i] = response.EquipmentResponse{
-			ID:                 d.ID,
-			Name:               d.Name,
-			Image_URL:          d.Image_URL,
-			Quantity:           d.Quantity,
-			CreatedAt:          d.CreatedAt,
-			UpdatedAt:          d.UpdatedAt,
-		}
-	}
-
-	response.SuccessWithPaginate(ctx, res, req.Size, req.Page, count)
+    req := request.ListEquipmentBooking{}
+    if err := ctx.Bind(&req); err != nil {
+        response.BadRequest(ctx, err.Error())
+        return
+    }
+    data, count, err := ctl.Service.List(ctx, req)
+    if err != nil {
+        response.InternalError(ctx, err.Error())
+        return
+    }
+    res := make([]response.BookingEquipmentResponse, len(data))
+    for i, d := range data {
+        res[i] = response.BookingEquipmentResponse{
+            ID:          d.ID,
+            BookingID:   d.BookingID,
+            EquipmentID: d.EquipmentID,
+            Quantity:    d.Quantity,
+            CreatedAt:   d.CreatedAt,
+            UpdatedAt:   d.UpdatedAt,
+        }
+    }
+    response.SuccessWithPaginate(ctx, res, req.Size, req.Page, count)
 }

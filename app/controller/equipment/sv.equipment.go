@@ -112,3 +112,30 @@ func (s *Service) List(ctx context.Context, req request.ListEquipment) ([]model.
 	err = query.Offset(offset).Limit(req.Size).Order(order).Scan(ctx, &m)
 	return m, count, err
 }
+
+
+func (s *Service) GetEquipmentAvailable(ctx context.Context, equipmentID string) (int, error) {
+    var eq model.Equipment
+    err := s.db.NewSelect().Model(&eq).Where("id = ?", equipmentID).Scan(ctx)
+    if err != nil {
+        return 0, err
+    }
+
+    var usedQty int
+    err = s.db.NewSelect().
+        Table("booking_equipments").
+        Join("JOIN bookings as b ON booking_equipments.booking_id::uuid = b.id::uuid").
+        Where("booking_equipments.equipment_id = ?", equipmentID).
+        Where("b.status IN (?, ?)", "Pending", "Approved").
+        ColumnExpr("COALESCE(SUM(booking_equipments.quantity), 0)").
+        Scan(ctx, &usedQty)
+    if err != nil {
+        return 0, err
+    }
+
+    available := eq.Quantity - usedQty
+    if available < 0 {
+        available = 0
+    }
+    return available, nil
+}

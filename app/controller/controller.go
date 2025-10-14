@@ -19,6 +19,7 @@ import (
 	"app/app/controller/room_type"
 	"app/app/controller/user"
 	"app/app/controller/user_role"
+	"app/app/controller/line"
 	"app/config"
 )
 
@@ -41,6 +42,7 @@ type Controller struct {
 	ReviewsCtl          *reviewss.Controller
 	ReportCtl           *reportss.Controller
 	RoomTypeCtl         *room_type.Controller
+	LineCtl             *line.Controller
 }
 
 func New() *Controller {
@@ -65,5 +67,6 @@ func New() *Controller {
 		ReviewsCtl:          reviewss.NewController(db),
 		ReportCtl:           reportss.NewController(db),
 		RoomTypeCtl:         room_type.NewController(db),
+		LineCtl:             line.NewController(db),
 	}
 }

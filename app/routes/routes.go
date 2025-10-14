@@ -1,8 +1,10 @@
 package routes
 
 import (
+	"app/app/controller"
 	"app/internal/logger"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -17,12 +19,20 @@ func Router(app *gin.Engine) {
 	// CORS Middleware
 	app.Use(cors.New(cors.Config{
 		AllowOriginFunc: func(origin string) bool {
-			return origin == "http://localhost:3000"
+			// อนุญาต dev localhost
+			if origin == "http://localhost:3000" || origin == "https://localhost:3000" {
+				return true
+			}
+			// อนุญาตโดเมนจาก ngrok (ทั้ง .ngrok-free.app และ .ngrok.io)
+			if strings.HasSuffix(origin, ".ngrok-free.app") || strings.HasSuffix(origin, ".ngrok.io") {
+				return true
+			}
+			return false
 		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
+		AllowCredentials: true, // ใช้ cookie/JWT ข้ามโดเมนได้
 		MaxAge:           12 * time.Hour,
 	}))
 
@@ -56,4 +66,11 @@ func Router(app *gin.Engine) {
 	Reviews(apiV1.Group("/reviews"))
 	Report(apiV1.Group("/reports"))
 	RoomType(apiV1.Group("/roomTypes"))
+
+	// ✅ เพิ่มกลุ่ม LINE API
+	Line(apiV1.Group("/line"))
+
+	// ✅ เพิ่ม webhook สำหรับ LINE (อยู่นอก /api/v1 และไม่ต้องมี auth)
+	app.POST("/webhook/line", controller.New().LineCtl.Webhook)
+
 }

@@ -9,18 +9,19 @@ import (
 type Booking struct {
 	bun.BaseModel `bun:"table:bookings"`
 
-	ID          string             `bun:",pk,type:uuid,default:gen_random_uuid()"`
-	User        *User              `bun:"rel:belongs-to,join:user_id=id"`
-	UserID      string             `bun:"user_id,notnull"`
-	Room        *Room              `bun:"rel:belongs-to,join:room_id=id"`
-	RoomID      string             `bun:"room_id,notnull"`
-	Title       string             `bun:"title,notnull"`
-	Description string             `bun:"description,notnull"`
-	Phone       string             `bun:"phone,notnull"`
-	StartTime   int64              `bun:"start_time,notnull"`
-	EndTime     int64              `bun:"end_time,notnull"`
-	ApprovedBy  string             `bun:"approved_by"`
-	Status      enum.BookingStatus `bun:"status,notnull"`
+	ID               string             `bun:",pk,type:uuid,default:gen_random_uuid()"`
+	User             *User              `bun:"rel:belongs-to,join:user_id=id"`
+	UserID           string             `bun:"user_id,notnull"`
+	Room             *Room              `bun:"rel:belongs-to,join:room_id=id"`
+	RoomID           string             `bun:"room_id,notnull"`
+	Title            string             `bun:"title,notnull"`
+	Description      string             `bun:"description,notnull"`
+	Phone            string             `bun:"phone,notnull"`
+	StartTime        int64              `bun:"start_time,notnull"`
+	EndTime          int64              `bun:"end_time,notnull"`
+	ApprovedBy       string             `bun:"approved_by"`
+	Status           enum.BookingStatus `bun:"status,notnull"`
+	ExpireWarnSentAt *int64             `bun:"expire_warn_sent_at"`
 
 	CreateUpdateUnixTimestamp
 	SoftDelete

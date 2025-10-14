@@ -1,6 +1,7 @@
 package booking
 
-import "github.com/uptrace/bun"
+import (
+	"github.com/uptrace/bun")
 
 type Controller struct {
 	Name    string

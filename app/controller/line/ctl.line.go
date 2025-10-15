@@ -3,6 +3,7 @@ package line
 import (
 	"strings"
 
+	"app/app/request"
 	"app/app/response"
 	"app/internal/logger"
 
@@ -25,7 +26,11 @@ func (c *Controller) IssuePairingCode(ctx *gin.Context) {
 		response.InternalError(ctx, "cannot generate pairing code")
 		return
 	}
-	response.Success(ctx, gin.H{"code": "PAIR-" + code, "expires_at": exp})
+	response.Success(ctx, gin.H{
+		"user_id":    uid,
+		"code":       "PAIR-" + code,
+		"expires_at": exp, // epoch seconds
+	})
 }
 
 func (c *Controller) Webhook(ctx *gin.Context) {
@@ -104,4 +109,30 @@ func (c *Controller) Webhook(ctx *gin.Context) {
 		}
 	}
 	ctx.Status(200)
+}
+
+func (c *Controller) GetPairingCodeByUserID(ctx *gin.Context) {
+	userID := strings.TrimSpace(ctx.Param("id"))
+	if userID == "" {
+		response.BadRequest(ctx, "missing user_id")
+		return
+	}
+
+	createIfMissing := ctx.Query("create_if_missing") == "1"
+	req := request.PairingCodeGet{
+		UserID:          userID,
+		CreateIfMissing: createIfMissing,
+	}
+
+	resp, mserr, err := c.Svc.GetPairingCode(ctx, req)
+	if err != nil {
+		// ✅ ถ้าเป็น not found จาก service ให้ตอบ 404 แทน 500
+		if mserr && strings.Contains(strings.ToLower(err.Error()), "not found") {
+			response.NotFound(ctx, err.Error())
+			return
+		}
+		response.InternalError(ctx, "cannot get pairing code")
+		return
+	}
+	response.Success(ctx, resp)
 }

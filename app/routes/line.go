@@ -13,4 +13,5 @@ func Line(router *gin.RouterGroup) {
     router.POST("/pairing-code", middleware.AuthMiddleware(), ctl.IssuePairingCode)
     // webhook (ไม่ต้อง Auth)
     router.POST("/webhook/line", ctl.Webhook)
+    router.GET("/pairing-code/:id", ctl.GetPairingCodeByUserID)
 }

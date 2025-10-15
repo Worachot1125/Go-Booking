@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"app/app/model"
+	"app/app/request"
+	"app/app/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
@@ -52,7 +54,7 @@ func (s *Service) GeneratePairingCode(ctx context.Context, userID string) (strin
 	if err != nil {
 		return "", 0, err
 	}
-	exp := time.Now().Unix() + 10*60
+	exp := time.Now().Add(24 * time.Hour).Unix()
 
 	rec := &model.LinePairingCode{
 		UserID:    userID,
@@ -135,4 +137,56 @@ func (s *Service) PushTextToLineUser(lineUserID, text string) error {
 	}
 	_, err := s.bot.PushMessage(lineUserID, linebot.NewTextMessage(text)).Do()
 	return err
+}
+
+func (s *Service) GetPairingCode(ctx context.Context, req request.PairingCodeGet) (*response.PairingCodeGet, bool, error) {
+	if strings.TrimSpace(req.UserID) == "" {
+		return nil, true, errors.New("missing user_id")
+	}
+
+	now := time.Now().Unix()
+
+	var row model.LinePairingCode
+	err := s.db.NewSelect().
+		Model(&row).
+		Where("user_id = ?", req.UserID).
+		Where("used_at IS NULL").
+		Where("expires_at > ?", now).
+		Order("created_at DESC").
+		Limit(1).
+		Scan(ctx)
+
+	if err != nil {
+		// ✅ แยกเคส "ไม่พบ" ออกจาก error อื่น ๆ
+		if errors.Is(err, sql.ErrNoRows) {
+			if !req.CreateIfMissing {
+				return nil, true, errors.New("pairing code not found")
+			}
+			// สร้างใหม่ (TTL 1 นาที หรืออ่านจาก env ตามที่คุณตั้งไว้)
+			code, exp, genErr := s.GeneratePairingCode(ctx, req.UserID)
+			if genErr != nil {
+				return nil, false, genErr
+			}
+			loc, _ := time.LoadLocation("Asia/Bangkok")
+			return &response.PairingCodeGet{
+				UserID:         req.UserID,
+				Code:           "PAIR-" + code,
+				ExpiresAt:      exp,
+				ExpiresAtHuman: time.Unix(exp, 0).In(loc).Format("02/01 15:04:05"),
+				CreatedAt:      time.Now().Unix(),
+			}, false, nil
+		}
+		// ✅ error จริง (DB ล้ม ฯลฯ)
+		return nil, false, err
+	}
+
+	// ✅ เจอโค้ดที่ใช้ได้
+	loc, _ := time.LoadLocation("Asia/Bangkok")
+	return &response.PairingCodeGet{
+		UserID:         row.UserID,
+		Code:           "PAIR-" + row.Code,
+		ExpiresAt:      row.ExpiresAt,
+		ExpiresAtHuman: time.Unix(row.ExpiresAt, 0).In(loc).Format("02/01 15:04:05"),
+		CreatedAt:      row.CreatedAt,
+	}, false, nil
 }

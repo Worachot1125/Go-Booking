@@ -29,6 +29,7 @@ func Router(app *gin.Engine) {
 			}
 			return false
 		},
+		AllowOrigins:     []string{"https://nuxt3-booking.vercel.app"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},

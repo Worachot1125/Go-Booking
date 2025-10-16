@@ -40,7 +40,7 @@ func HttpCmd() *cobra.Command {
 
 			// === แจ้งเตือนเหลือ 15 นาที (ทุก 60 วิ) — แยก loop ไม่ทับของเดิม ===
 			go func() {
-				ticker := time.NewTicker(60 * time.Second)
+				ticker := time.NewTicker(5 * time.Minute)
 				defer ticker.Stop()
 				for range ticker.C {
 					if err := bookingSvc.WarnExpiringBookings(); err != nil {

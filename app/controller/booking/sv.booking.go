@@ -403,11 +403,9 @@ func (s *Service) Get(ctx context.Context, id request.GetByIdBooking) (*response
 }
 
 func (s *Service) GetByRoomId(ctx context.Context, req request.GetByRoomIdBooking) ([]response.BookingResponse, int, error) {
-	// เพิ่มการรับค่า Page และ Size จาก req
-	offset := (req.Page - 1) * req.Size
 	m := []response.BookingResponse{}
 
-	query := s.db.NewSelect().
+	baseQ := s.db.NewSelect().
 		TableExpr("bookings as b").
 		ColumnExpr("b.id as id").
 		ColumnExpr("u.id as user_id").
@@ -429,15 +427,24 @@ func (s *Service) GetByRoomId(ctx context.Context, req request.GetByRoomIdBookin
 		Join("JOIN rooms as r ON b.room_id::uuid = r.id").
 		Join("LEFT JOIN users as au ON CAST(NULLIF(b.approved_by, '') AS uuid) = au.id").
 		Where("b.deleted_at IS NULL").
-		Where("r.id = ?", req.RoomID).
-		OrderExpr("start_time ASC")
+		Where("r.id = ?", req.RoomID)
 
-	count, err := query.Count(ctx)
+	// นับจำนวนทั้งหมด
+	count, err := baseQ.Clone().Count(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	err = query.OrderExpr("start_time ASC").Limit(req.Size).Offset(offset).Scan(ctx, &m)
+	listQ := baseQ.Clone().OrderExpr("start_time ASC")
+
+	// ถ้า size > 0 ค่อยใส่ limit/offset
+	if req.Size > 0 {
+		offset := (req.Page - 1) * req.Size
+		err = listQ.Limit(req.Size).Offset(offset).Scan(ctx, &m)
+	} else {
+		// size == 0 => เอาทั้งหมด
+		err = listQ.Scan(ctx, &m)
+	}
 	if err != nil {
 		return nil, 0, err
 	}

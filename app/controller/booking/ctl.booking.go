@@ -4,6 +4,8 @@ import (
 	"app/app/request"
 	"app/app/response"
 	"app/internal/logger"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -143,21 +145,38 @@ func (ctl *Controller) Get(ctx *gin.Context) {
 func (ctl *Controller) GetByRoomId(ctx *gin.Context) {
 	roomID := ctx.Param("id")
 
-	req := request.GetByRoomIdBooking{
-		RoomID: roomID,
-		Page:   1,
-		Size:   10,
+	// รับ page/size จาก query (เช่น ?page=1&size=10 หรือ ?size=all)
+	pageStr := ctx.DefaultQuery("page", "1")
+	sizeStr := ctx.DefaultQuery("size", "0") // 0 = all
+
+	page, _ := strconv.Atoi(pageStr)
+	var size int
+	if strings.EqualFold(sizeStr, "all") {
+		size = 0
+	} else {
+		size, _ = strconv.Atoi(sizeStr)
 	}
 
-	// ส่งอ็อบเจ็กต์ req ไปยังฟังก์ชัน Service.GetByRoomId
-	data, total, err := ctl.Service.GetByRoomId(ctx, req)
+	req := request.GetByRoomIdBooking{
+		RoomID: roomID,
+		Page:   page,
+		Size:   size,
+	}
 
+	data, total, err := ctl.Service.GetByRoomId(ctx, req)
 	if err != nil {
 		logger.Errf(err.Error())
 		response.InternalError(ctx, err.Error())
 		return
 	}
-	response.SuccessWithPaginate(ctx, data, 0, 0, total)
+
+	// ถ้า size=0 (เอาทั้งหมด) จะไม่ต้องส่ง paginate
+	if size == 0 {
+		response.Success(ctx, data)
+		return
+	}
+
+	response.SuccessWithPaginate(ctx, data, page, size, total)
 }
 
 func (ctl *Controller) GetBookingByUserID(ctx *gin.Context) {

@@ -163,14 +163,26 @@ func (s *Service) Get(ctx context.Context, id request.GetByIdBuilding) ([]respon
 }
 
 func (s *Service) Delete(ctx context.Context, id request.GetByIdBuilding) error {
-	ex, err := s.db.NewSelect().Table("buildings").Where("id = ?", id.ID).Where("deleted_at IS NULL").Exists(ctx)
+	// เช็คว่ามี record นี้จริง (นับรวมที่เคย soft-delete ไปแล้วด้วย)
+	exists, err := s.db.
+		NewSelect().
+		Model((*model.Building)(nil)).
+		Where("id = ?", id.ID).
+		WhereAllWithDeleted().
+		Exists(ctx)
 	if err != nil {
 		return err
 	}
-	if !ex {
+	if !exists {
 		return errors.New("building not found")
 	}
 
-	_, err = s.db.NewDelete().Model((*model.Building)(nil)).Where("id = ?", id.ID).Exec(ctx)
+	// ลบจริง (hard delete) — ข้าม soft delete
+	_, err = s.db.
+		NewDelete().
+		Model((*model.Building)(nil)).
+		Where("id = ?", id.ID).
+		ForceDelete().
+		Exec(ctx)
 	return err
 }

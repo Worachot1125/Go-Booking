@@ -5,6 +5,7 @@ import (
 	"app/app/request"
 	"app/app/response"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -79,67 +80,97 @@ func (s *Service) Create(ctx context.Context, req request.CreateUser) (*model.Us
 }
 
 func (s *Service) Update(ctx context.Context, req request.UpdateUser, id request.GetByIdUser) (*model.User, bool, error) {
-	// ตรวจสอบว่า user มีอยู่หรือไม่
-	ex, err := s.db.NewSelect().Table("users").Where("id = ?", id.ID).Exists(ctx)
-	if err != nil {
-		return nil, false, err
-	}
-	if !ex {
-		return nil, false, errors.New("user not found")
-	}
-
-	// หา position_id จาก position_name
-	var positionID string
-	err = s.db.NewSelect().
-		Model((*model.Position)(nil)).
-		Column("id").
-		Where("name = ?", req.Position_Name).
-		Scan(ctx, &positionID)
-	if err != nil {
-		return nil, false, errors.New("ไม่พบตำแหน่งงานที่ระบุ")
-	}
-
-	// เข้ารหัสรหัสผ่านใหม่
-	bytes, err := bcrypt.GenerateFromPassword([]byte(req.Password), 10)
-	if err != nil {
+	// 1) ตรวจว่ามีผู้ใช้จริง
+	user := new(model.User)
+	if err := s.db.NewSelect().
+		Model(user).
+		Where("id = ?", id.ID).
+		Scan(ctx); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, false, errors.New("user not found")
+		}
 		return nil, false, err
 	}
 
-	// เตรียมข้อมูล user สำหรับอัปเดต
-	m := &model.User{
-		ID:          id.ID,
-		FirstName:   req.FirstName,
-		LastName:    req.LastName,
-		Email:       req.Email,
-		Password:    string(bytes),
-		Position_ID: positionID,
-		Image_url:   req.Image_url,
-		Phone:       req.Phone,
-	}
-	m.SetUpdateNow()
+	// 2) เก็บคอลัมน์ที่จะอัปเดตแบบ dynamic
+	updateCols := make([]string, 0)
 
-	// อัปเดตข้อมูลในฐานข้อมูล
-	_, err = s.db.NewUpdate().Model(m).
-		Set("first_name = ?first_name").
-		Set("last_name = ?last_name").
-		Set("email = ?email").
-		Set("password = ?password").
-		Set("position_id = ?position_id").
-		Set("image_url = ?image_url").
-		Set("phone = ?phone").
-		Set("updated_at = ?updated_at").
+	// 3) อัปเดตทีละฟิลด์ ถ้ามีค่ามา (trim space ก่อน)
+	trim := func(s string) string { return strings.TrimSpace(s) }
+
+	if v := trim(req.FirstName); v != "" {
+		user.FirstName = v
+		updateCols = append(updateCols, "first_name")
+	}
+	if v := trim(req.LastName); v != "" {
+		user.LastName = v
+		updateCols = append(updateCols, "last_name")
+	}
+	if v := trim(req.Email); v != "" {
+		user.Email = v
+		updateCols = append(updateCols, "email")
+	}
+	if v := trim(req.Phone); v != "" {
+		user.Phone = v
+		updateCols = append(updateCols, "phone")
+	}
+	if v := trim(req.Image_url); v != "" {
+		user.Image_url = v
+		updateCols = append(updateCols, "image_url")
+	}
+
+	// 4) position_name: หา position_id เฉพาะกรณีส่งมาและไม่ว่าง
+	if v := trim(req.Position_Name); v != "" {
+		var positionID string
+		if err := s.db.NewSelect().
+			Model((*model.Position)(nil)).
+			Column("id").
+			Where("name = ?", v).
+			Scan(ctx, &positionID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, true, errors.New("ไม่พบตำแหน่งงานที่ระบุ")
+			}
+			return nil, false, err
+		}
+		user.Position_ID = positionID
+		updateCols = append(updateCols, "position_id")
+	}
+
+	// 5) password: hash เฉพาะเมื่อส่งมาและไม่ว่าง
+	if v := trim(req.Password); v != "" {
+		hashed, err := bcrypt.GenerateFromPassword([]byte(v), 10)
+		if err != nil {
+			return nil, false, err
+		}
+		user.Password = string(hashed)
+		updateCols = append(updateCols, "password")
+	}
+
+	// 6) ถ้าไม่มีฟิลด์ไหนจะอัปเดตเลย ก็คืนค่ากลับ (ถือว่าสำเร็จแบบ no-op)
+	if len(updateCols) == 0 {
+		return user, false, nil
+	}
+
+	// อัปเดตเวลา
+	user.SetUpdateNow()
+	updateCols = append(updateCols, "updated_at")
+
+	// 7) รันอัปเดตเฉพาะคอลัมน์ที่กำหนด
+	_, err := s.db.NewUpdate().
+		Model(user).
+		Column(updateCols...).
 		WherePK().
-		OmitZero().
 		Returning("*").
 		Exec(ctx)
 	if err != nil {
+		// ตรวจ duplicate key (email/phone ซ้ำ)
 		if strings.Contains(err.Error(), "duplicate key value") {
 			return nil, true, errors.New("user already exists")
 		}
 		return nil, false, err
 	}
 
-	return m, false, nil
+	return user, false, nil
 }
 
 func (s *Service) List(ctx context.Context, req request.ListUser) ([]response.ListUser, int, error) {
@@ -210,7 +241,6 @@ func (s *Service) List(ctx context.Context, req request.ListUser) ([]response.Li
 
 	return m, count, nil
 }
-
 
 func (s *Service) Get(ctx context.Context, id request.GetByIdUser) (*response.ListUser, error) {
 	m := response.ListUser{}

@@ -5,6 +5,7 @@ import (
 	"app/app/request"
 	"app/app/response"
 	"app/internal/logger"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -73,7 +74,6 @@ func (ctl *Controller) Create(ctx *gin.Context) {
 }
 
 func (ctl *Controller) Update(ctx *gin.Context) {
-	// ดึง ID จาก path
 	ID := request.GetByIdUser{}
 	if err := ctx.BindUri(&ID); err != nil {
 		logger.Err(err.Error())
@@ -81,7 +81,6 @@ func (ctl *Controller) Update(ctx *gin.Context) {
 		return
 	}
 
-	// อ่านค่าทีละฟิลด์จาก multipart/form-data
 	firstName := ctx.PostForm("first_name")
 	lastName := ctx.PostForm("last_name")
 	email := ctx.PostForm("email")
@@ -90,15 +89,8 @@ func (ctl *Controller) Update(ctx *gin.Context) {
 	positionName := ctx.PostForm("position_name")
 	existingImageURL := ctx.PostForm("existing_image_url")
 
-	if firstName == "" || lastName == "" || email == "" || phone == "" || positionName == "" {
-		response.BadRequest(ctx, "ข้อมูลไม่ครบ")
-		return
-	}
-
-	// เตรียม imageURL
-	imageURL := existingImageURL
-	file, err := ctx.FormFile("image_url")
-	if err == nil {
+	imageURL := strings.TrimSpace(existingImageURL)
+	if file, err := ctx.FormFile("image_url"); err == nil {
 		src, err := file.Open()
 		if err != nil {
 			logger.Errf("cannot open uploaded file: %v", err)
@@ -107,15 +99,15 @@ func (ctl *Controller) Update(ctx *gin.Context) {
 		}
 		defer src.Close()
 
-		imageURL, err = helper.UploadImageToCloudinary(src)
+		uploadedURL, err := helper.UploadImageToCloudinary(src)
 		if err != nil {
 			logger.Errf("upload to cloudinary failed: %v", err)
 			response.InternalError(ctx, "ไม่สามารถอัปโหลดรูปภาพได้")
 			return
 		}
+		imageURL = uploadedURL
 	}
 
-	// สร้าง request และเรียก service
 	body := request.UpdateUser{
 		CreateUser: request.CreateUser{
 			FirstName:     firstName,
@@ -124,22 +116,23 @@ func (ctl *Controller) Update(ctx *gin.Context) {
 			Password:      password,
 			Phone:         phone,
 			Position_Name: positionName,
-			Image_url:     imageURL,
+			Image_url:     imageURL, // ว่างได้ ถ้าไม่ต้องการอัปเดตรูป
 		},
 	}
 
 	_, mserr, err := ctl.Service.Update(ctx, body, ID)
 	if err != nil {
-		ms := "internal server error"
+		// ถ้าเป็น business error (mserr=true) ให้ส่งข้อความนั้นกลับเป็น 400
 		if mserr {
-			ms = err.Error()
+			response.BadRequest(ctx, err.Error())
+			return
 		}
 		logger.Errf(err.Error())
-		response.InternalError(ctx, ms)
+		response.InternalError(ctx, "internal server error")
 		return
 	}
 
-	response.Success(ctx, nil)
+	response.Success(ctx, "อัปเดตข้อมูลสำเร็จ")
 }
 
 func (ctl *Controller) List(ctx *gin.Context) {

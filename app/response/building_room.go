@@ -8,6 +8,7 @@ type Building_RoomResponse struct {
 	BuildingName   string `json:"building_name"`
 	CreatedAt      string `json:"created_at"`
 	UpdatedAt      string `json:"updated_at"`
+	DeletedAt      string `json:"deleted_at"`
 }
 
 type RoomWithBuildingResponse struct {

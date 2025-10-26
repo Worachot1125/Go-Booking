@@ -259,14 +259,27 @@ func (s *Service) Get(ctx context.Context, id request.GetByIdRoom) (*response.Ro
 }
 
 func (s *Service) Delete(ctx context.Context, id request.GetByIdRoom) error {
-	ex, err := s.db.NewSelect().Table("rooms").Where("id = ?", id.ID).Where("deleted_at IS NULL").Exists(ctx)
+	// เช็คว่ามี record นี้จริง (รวมที่ถูก soft delete แล้ว)
+	exists, err := s.db.
+		NewSelect().
+		Model((*model.Room)(nil)).
+		Where("id = ?", id.ID).
+		WhereAllWithDeleted().
+		Exists(ctx)
 	if err != nil {
 		return err
 	}
-	if !ex {
+	if !exists {
 		return errors.New("room not found")
 	}
 
-	_, err = s.db.NewDelete().Model((*model.Room)(nil)).Where("id = ?", id.ID).Exec(ctx)
+	// ลบจริง (ข้าม soft delete)
+	_, err = s.db.
+		NewDelete().
+		Model((*model.Room)(nil)).
+		Where("id = ?", id.ID).
+		ForceDelete().
+		Exec(ctx)
+
 	return err
 }
